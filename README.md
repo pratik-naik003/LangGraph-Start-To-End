@@ -141,7 +141,7 @@ To follow the playlist smoothly, you should know:
 * LangGraph is built on top of LangChain
 * The creator recommends watching the **LangChain playlist first**
 
-# Generative AI vs Agentic AI — Simple Notes
+# Generative AI vs Agentic AI — Video 2
 
 ## 1. Introduction
 
@@ -277,3 +277,171 @@ Generative AI started the revolution, but Agentic AI is the next big leap where 
 
 Agentic AI doesn't just answer — it acts, plans, and completes tasks like a real digital employee.
 
+
+# Agentic AI – Video 3
+
+## What is Agentic AI?
+
+Agentic AI is a type of AI that:
+
+* Takes a goal from a user
+* Plans how to achieve it
+* Executes tasks automatically
+* Adapts when situations change
+* Asks for help only when needed
+
+➡️ It does things proactively, unlike normal chatbots which are only reactive.
+
+---
+
+### Example Difference
+
+| Generative AI (ChatGPT)         | Agentic AI                                        |
+| ------------------------------- | ------------------------------------------------- |
+| Answers only what you ask       | Takes your goal and completes the entire workflow |
+| Reactive                        | Proactive                                         |
+| No planning                     | Makes plans and executes                          |
+| Needs instructions step-by-step | Works independently                               |
+
+---
+
+## Example
+
+**Goal:** Hire a Backend Engineer
+
+Agentic AI will:
+
+* Understand the goal
+* Create a job description (JD)
+* Post on job portals
+* Monitor applicants
+* Modify strategy if no applications
+* Parse resumes, shortlist candidates
+* Schedule interviews using calendar
+* Send offer letters
+* Onboard selected candidate
+
+➡️ You gave one goal → AI handled everything end-to-end.
+
+---
+
+## Key Characteristics of Agentic AI (6 Traits)
+
+### 1. Autonomy
+
+* Works independently without step-by-step human commands
+* Takes actions on its own
+* Shows autonomy in:
+
+  * Execution
+  * Decision-making
+  * Tool selection
+
+**Control Mechanisms:**
+
+* Permission limits
+* Human approval checkpoints
+* Guardrails (policies)
+
+### 2. Goal-Oriented
+
+* Always works toward a defined goal
+* Stores goals in memory
+* Handles:
+
+  * Plain goals → "Hire a backend engineer"
+  * Goals with constraints → "Hire remotely, 2–4 years experience"
+* Goals can be updated midway
+
+### 3. Planning
+
+Agentic AI works in two phases:
+
+```
+PLAN → EXECUTE → REPLAN (if something fails) → EXECUTE
+```
+
+Planning steps:
+
+* Generate multiple plans
+* Evaluate plans (cost, risk, tools, constraints)
+* Select the best plan
+
+### 4. Reasoning
+
+Used in planning and execution to:
+
+* Understand goal
+* Break tasks into steps
+* Decide tools to use
+* Handle errors
+* Decide when to involve human
+
+**Reasoning = thinking logic of the agent**
+
+### 5. Adaptability
+
+Changes strategy if:
+
+* Something fails (e.g., API is down)
+* External feedback changes (low applicants)
+* Goal changes midway
+
+➡️ Agent modifies actions without restarting.
+
+### 6. Context Awareness
+
+Agent remembers:
+
+* The main goal
+* Task progress
+* Past chats
+* Tool responses
+* User preferences
+* Guardrails
+
+**Memory Types:**
+
+* Short-term memory → current session data
+* Long-term memory → policies, user preferences, history
+
+➡️ Without context, an agent cannot operate across multiple days or steps.
+
+---
+
+## Core Components of Agentic AI (5 Components)
+
+| Component        | Function                                                            |
+| ---------------- | ------------------------------------------------------------------- |
+| **Brain (LLM)**  | Understands goals, plans, reasons, selects tools, communicates      |
+| **Orchestrator** | Executes steps in correct order, handles loops, conditions, retries |
+| **Tools**        | External actions: APIs, email, database, search, RAG                |
+| **Memory**       | Stores short-term and long-term information                         |
+| **Supervisor**   | Human approval system, applies rules, handles escalations           |
+
+---
+
+## Summary
+
+```
+Agentic AI = Goal + Planning + Reasoning + Autonomy + Tools + Memory + Supervisor
+```
+
+It behaves like a **digital employee** capable of executing full workflows, not just answering questions.
+
+---
+
+## How to Identify Agentic AI
+
+Ask these 6 questions:
+
+| Question                  | If YES → Agentic |
+| ------------------------- | ---------------- |
+| Is it autonomous?         | ✔️               |
+| Is it goal-driven?        | ✔️               |
+| Does it plan steps?       | ✔️               |
+| Does it reason?           | ✔️               |
+| Can it adapt?             | ✔️               |
+| Does it remember context? | ✔️               |
+
+➡️ If all are YES → It’s Agentic AI.
