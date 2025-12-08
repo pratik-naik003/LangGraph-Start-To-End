@@ -141,3 +141,139 @@ To follow the playlist smoothly, you should know:
 * LangGraph is built on top of LangChain
 * The creator recommends watching the **LangChain playlist first**
 
+# Generative AI vs Agentic AI — Simple Notes
+
+## 1. Introduction
+
+This playlist teaches Agentic AI using LangGraph. Before learning Agentic AI, it’s important to understand how it differs from Generative AI.
+
+## 2. What is Generative AI?
+
+Generative AI (GenAI) refers to AI models that can create new content such as:
+
+* Text (ChatGPT, Gemini, Claude)
+* Images (DALL·E, Midjourney)
+* Code (Code Llama)
+* Speech (ElevenLabs)
+* Videos (Sora, Runway ML)
+
+### Simple Definition
+
+Generative AI models learn from existing data and create new data that looks like it was created by humans.
+
+### How GenAI Works
+
+* It does not focus on input-output relationships like traditional AI.
+* It learns the pattern and distribution of data.
+* It generates new samples from that learned distribution.
+
+### Example
+
+Give GenAI thousands of cat images → it learns what a cat looks like → generates a new cat image.
+
+## 3. Traditional AI vs Generative AI
+
+| Feature     | Traditional AI                         | Generative AI             |
+| ----------- | -------------------------------------- | ------------------------- |
+| Purpose     | Predict or classify                    | Create new content        |
+| Learning    | Finds relations between input & output | Learns data distribution  |
+| Examples    | Spam detection, cancer detection       | ChatGPT, Midjourney       |
+| Output Type | Label or number                        | Text, Image, Audio, Video |
+
+## 4. Applications of Generative AI
+
+* Creative Writing: blogs, email drafting
+* Software Development: code generation, debugging
+* Customer Support: chatbots
+* Education: learning assistance
+* Design: thumbnails, infographics, AI-generated ads
+
+## 5. Scenario — HR Hiring Workflow
+
+**Goal:** Hire a Backend Engineer
+
+### Hiring Steps
+
+1. Write Job Description (JD)
+2. Post job on platforms like LinkedIn
+3. Shortlist candidates
+4. Schedule interviews
+5. Conduct interviews
+6. Send offer letter
+7. Onboard the candidate
+
+## 6. Four Levels of AI Solutions
+
+### 1️⃣ Simple Generative AI Chatbot
+
+**Capabilities:** Helps draft JD, emails, interview questions
+**Problems:**
+
+* Reactive (waits for input)
+* No memory
+* Generic advice
+* Cannot take actions
+
+### 2️⃣ RAG-based Chatbot (Retrieval Augmented Generation)
+
+**Improvement:** Connect to company documents like:
+
+* Old JDs, hiring strategies, onboarding policies
+  **Benefits:**
+* Company-specific answers
+  **Limitation:** Still reactive, cannot act independently
+
+### 3️⃣ Tool-Augmented Chatbot
+
+**Improvements:** Connect with tools such as:
+
+* LinkedIn API, resume parser, email sender, calendar tools
+  **Benefits:**
+* Can take real actions (post jobs, send emails, schedule interviews)
+  **Limitation:** Still not proactive
+
+### 4️⃣ Agentic AI (Final Stage)
+
+**Capabilities:**
+
+* Understands the goal
+* Plans steps automatically
+* Executes autonomously
+* Has memory & context
+* Adapts to changes
+* Makes decisions
+
+**Example Behavior:**
+
+* Notices low applications → updates JD + boosts LinkedIn post
+* Tracks onboarding and notifies only when approval is needed
+
+## 7. Key Differences — Generative AI vs Agentic AI
+
+| Feature            | Generative AI  | Agentic AI                     |
+| ------------------ | -------------- | ------------------------------ |
+| Goal               | Create content | Achieve a goal end-to-end      |
+| Nature             | Reactive       | Proactive & autonomous         |
+| Needs user prompt? | Yes            | Only once                      |
+| Uses tools?        | Optional       | Mandatory                      |
+| Memory             | Not always     | Yes                            |
+| Planning           | No             | Yes                            |
+| Adaptability       | No             | Yes                            |
+| Components         | Only LLM       | LLM + Memory + Tools + Planner |
+
+## 8. One-Line Understanding
+
+**Generative AI = capability** → creates content
+**Agentic AI = behavior** → achieves goals autonomously using GenAI + tools + memory + planning
+
+## 9. Conclusion
+
+Generative AI started the revolution, but Agentic AI is the next big leap where AI becomes:
+
+* Autonomous
+* Context-aware
+* Action-driven
+* Goal-oriented
+
+Agentic AI doesn't just answer — it acts, plans, and completes tasks like a real digital employee.
+
