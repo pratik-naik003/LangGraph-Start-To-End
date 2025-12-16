@@ -445,3 +445,428 @@ Ask these 6 questions:
 | Does it remember context? | ✔️               |
 
 ➡️ If all are YES → It’s Agentic AI.
+
+# Agentic AI using LangGraph 
+
+## 1. video 4
+
+* This is the **4rd video** in the *Agentic AI using LangGraph* playlist.
+* Previous videos covered:
+
+  * Difference between **Generative AI** and **Agentic AI**
+  * What **Agentic AI** is, with a real example (Automated Hiring)
+  * Characteristics, traits, and components of Agentic AI
+* This video shifts focus to **practical development** of Agentic AI applications.
+
+---
+
+## 2. Why Frameworks Are Needed for Agentic AI
+
+* Agentic AI applications are **complex**.
+* You cannot write everything **from scratch in Python**.
+* Many frameworks exist, such as:
+
+  * CrewAI
+  * Microsoft Autogen
+  * Others
+* This playlist uses **LangGraph**:
+
+  * Built by the **LangChain team**
+  * One of the **top frameworks** for Agentic AI
+
+---
+
+## 3. Goals of This Video
+
+By the end of this video, you will understand:
+
+* Why **LangGraph** exists
+* What **LangGraph** is (technical overview)
+* **LangChain vs LangGraph**
+* When to use **LangChain** and when to use **LangGraph**
+
+---
+
+## 4. Prerequisites
+
+You should already know:
+
+* What **LangChain** is
+* Basic LangChain components
+* How simple LangChain code works
+
+👉 If not, first watch:
+
+* LangChain Introduction
+* LangChain Components
+
+---
+
+## 5. Quick Recap: What is LangChain?
+
+### Definition
+
+> LangChain is an open-source library that simplifies building LLM-based applications.
+
+### Why LangChain Exists
+
+LLM-based applications require many parts:
+
+* Prompts
+* Models
+* Retrieval
+* Memory
+* Tools
+
+LangChain **simplifies and connects** all these parts.
+
+---
+
+## 6. Core LangChain Building Blocks
+
+### 1. Models
+
+* Unified interface for:
+
+  * OpenAI
+  * Anthropic (Claude)
+  * HuggingFace
+  * Ollama
+* Easy to switch models **without rewriting code**
+
+### 2. Prompts
+
+* Helps design and manage prompts
+* Supports prompt templates and reuse
+
+### 3. Retrievers
+
+* Fetch relevant data from:
+
+  * Vector databases
+  * Knowledge bases
+* Used for **RAG (Retrieval-Augmented Generation)** applications
+
+### 4. Chains (Most Important)
+
+* Connect components in a **linear sequence**
+* Output of one step becomes input of the next step
+* Best for:
+
+  * Chatbots
+  * Summarizers
+  * Simple multi-step workflows
+
+---
+
+## 7. What Can You Build with LangChain?
+
+* Chatbots
+* Text summarizers
+* Multi-step report generators
+* RAG-based systems
+* Basic agent-like workflows using tools
+
+⚠️ **Limitation**:
+
+* Works best for **linear workflows**
+* Struggles with **complex, non-linear logic**
+
+---
+
+## 8. Workflow vs Agent (Very Important Concept)
+
+### Workflow
+
+* Steps are predefined by the developer
+* Executes in the same order every time
+* Static
+
+### Agent
+
+* LLM decides:
+
+  * Steps
+  * Order
+  * Tool usage
+* Dynamic and autonomous
+
+👉 The automated hiring example shown is a **workflow**, not a full agent.
+
+---
+
+## 9. Automated Hiring Workflow (Overview)
+
+Steps include:
+
+* Receive hiring request
+* Create job description (JD)
+* Human approval
+* Post job
+* Wait & monitor applications
+* Modify JD if needed (loop)
+* Shortlist candidates
+* Schedule interviews
+* Conduct interviews
+* Send offers
+* Handle acceptance / rejection
+* Onboarding
+
+This workflow:
+
+* Has loops
+* Has conditions
+* Has wait times
+* Runs for **days or weeks**
+
+---
+
+## 10. Challenge 1: Control Flow Complexity
+
+### Problem with LangChain
+
+* LangChain chains are **linear**
+* This workflow is **non-linear**:
+
+  * Conditional branches
+  * Loops
+  * Jumps
+
+### Result
+
+* Requires a lot of custom **Python glue code**
+* Glue code is:
+
+  * Hard to maintain
+  * Hard to debug
+  * Error-prone
+
+---
+
+## 11. How LangGraph Solves Control Flow
+
+### Key Idea
+
+* Represent the workflow as a **graph**
+
+  * Nodes = tasks
+  * Edges = control flow
+
+### Benefits
+
+* Native support for:
+
+  * Conditions
+  * Loops
+  * Jumps
+* No glue code
+* Cleaner and more maintainable logic
+
+---
+
+## 12. Challenge 2: State Handling
+
+### What is State?
+
+All important data during workflow execution, such as:
+
+* Job description
+* Approval status
+* Application count
+* Interview results
+* Offer status
+
+State **changes over time**.
+
+### LangChain Problem
+
+* LangChain is **stateless**
+* Memory only stores conversation text
+* State must be manually managed using dictionaries
+
+---
+
+## 13. LangGraph State Management
+
+* LangGraph is **stateful**
+* You define a **state object**
+* Every node:
+
+  * Can read state
+  * Can update state
+* State flows automatically across nodes
+
+👉 LangChain = Stateless
+👉 LangGraph = Stateful
+
+---
+
+## 14. Challenge 3: Event-Driven Execution
+
+### Two Types of Execution
+
+* **Sequential**: Runs start → end without stopping
+* **Event-driven**:
+
+  * Pauses
+  * Waits for an external event
+  * Resumes later
+
+### Hiring Workflow Needs Event-Driven Execution
+
+* Wait 7 days after job posting
+* Wait 48 hours after JD modification
+* Wait for candidate response
+* Wait for human approvals
+
+### LangChain Limitation
+
+* No pause / resume support
+* Workflow must be manually broken
+
+### LangGraph Advantage
+
+* Built-in pause & resume
+* Uses checkpoints
+* Can resume exactly where it stopped
+
+---
+
+## 15. Challenge 4: Fault Tolerance
+
+### Problem
+
+Long-running workflows can fail due to:
+
+* API failure
+* Server crash
+* Network issues
+
+### LangChain
+
+* If it fails → start from the beginning
+
+### LangGraph
+
+* Supports:
+
+  * Retry logic (small failures)
+  * Recovery from last checkpoint (big failures)
+
+---
+
+## 16. Challenge 5: Human in the Loop
+
+### Meaning
+
+* Workflow pauses for **human decision**
+* Examples:
+
+  * JD approval
+  * Offer approval
+
+### LangChain
+
+* Works only for short waits
+* Not suitable for long approvals (hours or days)
+
+### LangGraph
+
+* First-class support
+* Can pause indefinitely
+* Resume after human input
+
+---
+
+## 17. Feature: Nested Workflows (Subgraphs)
+
+### Concept
+
+* A node can itself be a **graph**
+* Enables:
+
+  * Modular design
+  * Reusability
+  * Multi-agent systems
+
+### Example
+
+* “Conduct Interview” can be a full workflow:
+
+  * Question generation
+  * Multiple rounds
+  * Evaluation
+
+---
+
+## 18. Observability (Monitoring & Debugging)
+
+### Why Important
+
+* Debug errors
+* Audit decisions
+* Understand agent behavior
+
+### LangChain + LangSmith
+
+* Tracks LangChain code
+* ❌ Cannot track glue code
+
+### LangGraph + LangSmith
+
+* Full visibility
+* Tracks:
+
+  * Node execution
+  * State changes
+  * Human inputs
+  * Decision paths
+
+---
+
+## 19. Final Summary
+
+### What is LangGraph?
+
+> LangGraph is an orchestration framework to build **stateful, multi-step, event-driven workflows** using LLMs.
+
+Think of LangGraph as:
+
+> **A flowchart engine for LLMs**
+
+---
+
+## 20. When to Use What?
+
+### Use LangChain when:
+
+* Simple linear flows
+* Chatbots
+* Summarizers
+* Basic RAG
+
+### Use LangGraph when:
+
+* Complex workflows
+* Conditions & loops
+* Human-in-the-loop
+* Event-driven execution
+* Long-running systems
+* Multi-agent systems
+
+---
+
+## 21. Important Note
+
+* LangGraph does **not** replace LangChain
+* LangGraph is built **on top of LangChain**
+* You still use from LangChain:
+
+  * Prompts
+  * Models
+  * Retrievers
+  * Tools
+
+👉 **LangChain = Components**
+👉 **LangGraph = Orchestration**
+
