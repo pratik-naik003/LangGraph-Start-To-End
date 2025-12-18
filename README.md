@@ -1235,3 +1235,534 @@ Used because **parallel nodes run together**.
 
 👉 **Next Video:** First practical LangGraph workflow 🚀
 
+# 📘 Agentic AI using LangGraph – Sequential Workflows (Simple Notes)
+
+---
+
+## 1. What this video is about
+
+This video is the **first practical video** in the *Agentic AI using LangGraph* playlist.
+
+### Before this video, we covered (Theory):
+
+* Difference between **Generative AI vs Agentic AI**
+* What **Agentic AI** is (deep conceptual understanding)
+* Why **LangGraph** is needed when **LangChain** already exists
+* Core concepts of **LangGraph**
+
+👉 Now, theory is complete.
+👉 From this video onwards, **hands-on coding starts**.
+
+---
+
+## 2. Goal of this video
+
+This video has **two main goals**:
+
+1. Teach you **basic LangGraph syntax** (your first LangGraph code)
+2. Enable you to build **any simple sequential workflow** on your own
+
+---
+
+## 3. What is a Sequential Workflow?
+
+A **Sequential Workflow** means:
+
+* Tasks run **one after another**
+* No branching
+* No parallel paths
+
+**Example:**
+
+```
+Task 1 → Task 2 → Task 3 → END
+```
+
+This video covers:
+
+* Simple **non-LLM workflow**
+* Simple **LLM workflow**
+* **Prompt chaining** workflow
+
+---
+
+## 4. Installation & Setup
+
+### Step 1: Create a project folder
+
+```
+LangGraph_Tutorials/
+```
+
+Open this folder in **VS Code**.
+
+---
+
+### Step 2: Create virtual environment
+
+```bash
+python -m venv myenv
+```
+
+Activate it (Windows):
+
+```bash
+myenv\Scripts\activate
+```
+
+---
+
+### Step 3: Install required libraries
+
+```bash
+pip install langgraph langchain langchain-openai python-dotenv
+```
+
+**Why these libraries?**
+
+* `langgraph` → Workflow engine
+* `langchain` → LLM tools (models, prompts, loaders)
+* `langchain-openai` → OpenAI models
+* `python-dotenv` → Environment variables
+
+---
+
+## 5. Why Jupyter Notebook?
+
+We use **Jupyter Notebook (.ipynb)** because:
+
+* LangGraph graphs can be **visualized**
+* Easier debugging
+* Better learning experience
+
+---
+
+## 6. First Workflow (Non-LLM) – BMI Calculator
+
+### Problem
+
+* **Input:** weight, height
+* **Process:** Calculate BMI
+* **Output:** Updated state
+
+---
+
+## 7. Core LangGraph Concept
+
+Every LangGraph workflow follows **4 steps**:
+
+1. Define **State**
+2. Add **Nodes**
+3. Add **Edges**
+4. **Compile & Execute**
+
+---
+
+## 8. Define State (TypedDict)
+
+State = shared memory that flows through the graph.
+
+```python
+from typing import TypedDict
+
+class BMIState(TypedDict):
+    weight_kg: float
+    height_m: float
+    bmi: float
+```
+
+---
+
+## 9. Create the Graph
+
+```python
+from langgraph.graph import StateGraph
+
+graph = StateGraph(BMIState)
+```
+
+---
+
+## 10. Define Node (Python Function)
+
+Each **node = Python function**
+
+```python
+def calculate_bmi(state: BMIState) -> BMIState:
+    weight = state["weight_kg"]
+    height = state["height_m"]
+
+    bmi = weight / (height ** 2)
+    state["bmi"] = round(bmi, 2)
+
+    return state
+```
+
+---
+
+## 11. Add Node to Graph
+
+```python
+graph.add_node("calculate_bmi", calculate_bmi)
+```
+
+---
+
+## 12. Add Start & End Edges
+
+```python
+from langgraph.graph import START, END
+
+graph.add_edge(START, "calculate_bmi")
+graph.add_edge("calculate_bmi", END)
+```
+
+---
+
+## 13. Compile the Graph
+
+```python
+workflow = graph.compile()
+```
+
+---
+
+## 14. Execute the Workflow
+
+```python
+initial_state = {
+    "weight_kg": 80,
+    "height_m": 1.73
+}
+
+final_state = workflow.invoke(initial_state)
+print(final_state)
+```
+
+**Output:**
+
+```python
+{
+ 'weight_kg': 80,
+ 'height_m': 1.73,
+ 'bmi': 26.73
+}
+```
+
+---
+
+## 15. Visualize the Graph (Jupyter Only)
+
+```python
+workflow.get_graph().draw_mermaid_png()
+```
+
+Graph:
+
+```
+START → calculate_bmi → END
+```
+
+---
+
+## 16. Making Workflow Slightly Complex (BMI Category)
+
+Now we add:
+
+* A **second node**
+* BMI category: Underweight / Normal / Overweight / Obese
+
+---
+
+## 17. Update State
+
+```python
+class BMIState(TypedDict):
+    weight_kg: float
+    height_m: float
+    bmi: float
+    category: str
+```
+
+---
+
+## 18. New Node – Label BMI
+
+```python
+def label_bmi(state: BMIState) -> BMIState:
+    bmi = state["bmi"]
+
+    if bmi < 18.5:
+        state["category"] = "Underweight"
+    elif bmi < 25:
+        state["category"] = "Normal"
+    elif bmi < 30:
+        state["category"] = "Overweight"
+    else:
+        state["category"] = "Obese"
+
+    return state
+```
+
+---
+
+## 19. Add Node & Edges
+
+```python
+graph.add_node("label_bmi", label_bmi)
+
+graph.add_edge("calculate_bmi", "label_bmi")
+graph.add_edge("label_bmi", END)
+```
+
+Graph:
+
+```
+START → calculate_bmi → label_bmi → END
+```
+
+---
+
+## 20. Execute Again
+
+```python
+final_state = workflow.invoke({
+    "weight_kg": 80,
+    "height_m": 1.73
+})
+
+print(final_state)
+```
+
+**Output:**
+
+```python
+{
+ 'weight_kg': 80,
+ 'height_m': 1.73,
+ 'bmi': 26.73,
+ 'category': 'Overweight'
+}
+```
+
+---
+
+# 🚀 LLM Workflow (LangGraph + LangChain)
+
+## 21. LLM Workflow Idea
+
+* Input: **question**
+* Node calls **LLM**
+* Output: **answer**
+
+---
+
+## 22. Environment Setup
+
+Create a `.env` file:
+
+```
+OPENAI_API_KEY=your_api_key_here
+```
+
+---
+
+## 23. Imports
+
+```python
+from langgraph.graph import StateGraph, START, END
+from langchain_openai import ChatOpenAI
+from typing import TypedDict
+from dotenv import load_dotenv
+
+load_dotenv()
+model = ChatOpenAI()
+```
+
+---
+
+## 24. Define State
+
+```python
+class LLMState(TypedDict):
+    question: str
+    answer: str
+```
+
+---
+
+## 25. Node Function
+
+```python
+def llm_qa(state: LLMState) -> LLMState:
+    question = state["question"]
+
+    prompt = f"Answer the following question:\n{question}"
+    response = model.invoke(prompt)
+
+    state["answer"] = response.content
+    return state
+```
+
+---
+
+## 26. Build Graph
+
+```python
+graph = StateGraph(LLMState)
+
+graph.add_node("llm_qa", llm_qa)
+graph.add_edge(START, "llm_qa")
+graph.add_edge("llm_qa", END)
+
+workflow = graph.compile()
+```
+
+---
+
+## 27. Execute
+
+```python
+final_state = workflow.invoke({
+    "question": "How far is the Moon from Earth?"
+})
+
+print(final_state["answer"])
+```
+
+---
+
+# 🔗 Prompt Chaining Workflow
+
+Prompt chaining = **multiple LLM calls in sequence**
+
+---
+
+## 28. Prompt Chaining Use Case
+
+* Generate **outline**
+* Generate **blog using outline**
+
+---
+
+## 29. State Definition
+
+```python
+class BlogState(TypedDict):
+    title: str
+    outline: str
+    content: str
+```
+
+---
+
+## 30. Node 1 – Create Outline
+
+```python
+def create_outline(state: BlogState) -> BlogState:
+    title = state["title"]
+
+    prompt = f"Generate a detailed outline for a blog on the topic: {title}"
+    response = model.invoke(prompt)
+
+    state["outline"] = response.content
+    return state
+```
+
+---
+
+## 31. Node 2 – Create Blog
+
+```python
+def create_blog(state: BlogState) -> BlogState:
+    title = state["title"]
+    outline = state["outline"]
+
+    prompt = f"""
+    Write a detailed blog on the topic \"{title}\"
+    using the following outline:
+    {outline}
+    """
+
+    response = model.invoke(prompt)
+    state["content"] = response.content
+    return state
+```
+
+---
+
+## 32. Build Prompt Chaining Graph
+
+```python
+graph = StateGraph(BlogState)
+
+graph.add_node("create_outline", create_outline)
+graph.add_node("create_blog", create_blog)
+
+graph.add_edge(START, "create_outline")
+graph.add_edge("create_outline", "create_blog")
+graph.add_edge("create_blog", END)
+
+workflow = graph.compile()
+```
+
+---
+
+## 33. Execute Prompt Chaining
+
+```python
+final_state = workflow.invoke({
+    "title": "Rise of AI in India"
+})
+
+print(final_state["outline"])
+print(final_state["content"])
+```
+
+---
+
+## 34. Why LangGraph is Powerful
+
+Unlike LangChain chains:
+
+* Intermediate outputs are accessible
+* State evolves step-by-step
+* Better debugging
+* More control over workflows
+
+---
+
+## 35. Homework (Important)
+
+Add **one more node**:
+
+* `evaluate_blog`
+
+**Prompt:**
+
+```
+Based on this outline and blog,
+rate the blog from 1–10.
+Return only an integer score.
+```
+
+Update:
+
+* **State** → add `score`
+* **Graph** → add new node + edge
+
+---
+
+## 36. Final Takeaway
+
+* LangGraph is **overkill for simple linear workflows**
+* But extremely powerful for:
+
+  * Complex agents
+  * Conditional logic
+  * Multi-step reasoning
+  * Agentic AI systems
+
+---
+
+
