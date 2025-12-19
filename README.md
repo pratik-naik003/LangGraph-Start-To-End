@@ -1765,4 +1765,388 @@ Update:
 
 ---
 
+# 📘 Agentic AI using LangGraph – Parallel Workflows (Simple Notes)
+
+---
+
+## 1️⃣ What this video is about
+
+This video continues the **Agentic AI using LangGraph** playlist.
+
+### Till now, we learned:
+
+* What Agentic AI is
+* Why LangGraph is used
+* LangGraph core concepts
+* Sequential (linear) workflows
+* First practical example (from the last video)
+
+### In this video:
+
+* 👉 We learn **Parallel Workflows using LangGraph**
+* 👉 Two examples are covered:
+
+  * **Non-LLM parallel workflow** (Cricket stats)
+  * **LLM-based parallel workflow** (UPSC Essay Evaluation)
+
+---
+
+## 2️⃣ What is a Parallel Workflow?
+
+* Multiple nodes run **at the same time**
+* Nodes **do not depend** on each other
+* All nodes use the **same input state**
+* Outputs from nodes are **merged later**
+
+📌 **Example**:
+
+* Strike Rate
+* Boundary %
+* Balls per Boundary
+
+All these can be calculated independently, so they can run in parallel.
+
+---
+
+## 3️⃣ Example 1 – Cricket Batsman Parallel Workflow (Non-LLM)
+
+### 🎯 Goal
+
+Given batsman data:
+
+* Runs
+* Balls
+* Fours
+* Sixes
+
+Calculate **in parallel**:
+
+* Strike Rate
+* Boundary Percentage
+* Balls per Boundary
+
+Then generate a **summary**.
+
+---
+
+## 4️⃣ Workflow Structure
+
+```
+START
+ ├── Calculate Strike Rate
+ ├── Calculate Boundary %
+ ├── Calculate Balls per Boundary
+      ↓
+    Summary
+      ↓
+     END
+```
+
+---
+
+## 5️⃣ Define State (Very Important)
+
+The state holds **all data used in the workflow**.
+
+```python
+from typing import TypedDict
+
+class BatsmanState(TypedDict):
+    runs: int
+    balls: int
+    fours: int
+    sixes: int
+    strike_rate: float
+    boundary_percent: float
+    balls_per_boundary: float
+    summary: str
+```
+
+---
+
+## 6️⃣ Create Nodes (Functions)
+
+### 6.1 Calculate Strike Rate
+
+```python
+def calculate_strike_rate(state: BatsmanState):
+    sr = (state["runs"] / state["balls"]) * 100
+    return {"strike_rate": sr}  # partial update
+```
+
+---
+
+### 6.2 Calculate Balls per Boundary
+
+```python
+def calculate_balls_per_boundary(state: BatsmanState):
+    bpb = state["balls"] / (state["fours"] + state["sixes"])
+    return {"balls_per_boundary": bpb}
+```
+
+---
+
+### 6.3 Calculate Boundary Percentage
+
+```python
+def calculate_boundary_percent(state: BatsmanState):
+    boundary_runs = (state["fours"] * 4) + (state["sixes"] * 6)
+    percent = (boundary_runs / state["runs"]) * 100
+    return {"boundary_percent": percent}
+```
+
+---
+
+### 6.4 Summary Node
+
+```python
+def summary_node(state: BatsmanState):
+    summary = (
+        f"Strike Rate: {state['strike_rate']}\n"
+        f"Balls per Boundary: {state['balls_per_boundary']}\n"
+        f"Boundary %: {state['boundary_percent']}"
+    )
+    return {"summary": summary}
+```
+
+---
+
+## 7️⃣ Build the Graph
+
+```python
+from langgraph.graph import StateGraph, START, END
+
+graph = StateGraph(BatsmanState)
+
+graph.add_node("strike_rate", calculate_strike_rate)
+graph.add_node("bpb", calculate_balls_per_boundary)
+graph.add_node("boundary_percent", calculate_boundary_percent)
+graph.add_node("summary", summary_node)
+```
+
+---
+
+## 8️⃣ Define Edges (Parallel Execution)
+
+```python
+graph.add_edge(START, "strike_rate")
+graph.add_edge(START, "bpb")
+graph.add_edge(START, "boundary_percent")
+
+graph.add_edge("strike_rate", "summary")
+graph.add_edge("bpb", "summary")
+graph.add_edge("boundary_percent", "summary")
+
+graph.add_edge("summary", END)
+```
+
+---
+
+## 9️⃣ Compile & Run Workflow
+
+```python
+workflow = graph.compile()
+
+initial_state = {
+    "runs": 100,
+    "balls": 50,
+    "fours": 6,
+    "sixes": 4
+}
+
+result = workflow.invoke(initial_state)
+print(result["summary"])
+```
+
+---
+
+## 🔟 Important Concept – Partial State Updates ⚠️
+
+### ❌ Wrong (causes error in parallel workflows)
+
+```python
+return state
+```
+
+### ✅ Correct
+
+```python
+return {"strike_rate": sr}
+```
+
+📌 **Reason**:
+
+* Parallel nodes must **not overwrite shared state**
+* Only return the **field you update**
+* This avoids conflicts
+
+👉 **Best Practice**:
+Always use **partial state updates**, even in sequential workflows.
+
+---
+
+## 1️⃣1️⃣ Example 2 – UPSC Essay Evaluation (LLM-Based Parallel Workflow)
+
+### 🎯 Goal
+
+Evaluate an essay on:
+
+* Language Quality
+* Depth of Analysis
+* Clarity of Thought
+
+Each evaluation:
+
+* Runs in parallel
+* Uses an LLM
+* Returns:
+
+  * Text feedback
+  * Score (0–10)
+
+Final node:
+
+* Merges feedback
+* Calculates average score
+
+---
+
+## 1️⃣2️⃣ Why Structured Output is Needed
+
+### ❌ Problem
+
+* LLM may return "seven" instead of `7`
+* Difficult to calculate average score
+
+### ✅ Solution
+
+* Use **Structured Output**
+* Enforce schema using **Pydantic**
+
+---
+
+## 1️⃣3️⃣ Define Evaluation Schema
+
+```python
+from pydantic import BaseModel, Field
+
+class EvaluationSchema(BaseModel):
+    feedback: str = Field(description="Detailed feedback")
+    score: int = Field(ge=0, le=10, description="Score out of 10")
+```
+
+---
+
+## 1️⃣4️⃣ Create Structured LLM
+
+```python
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4o-mini")
+structured_llm = llm.with_structured_output(EvaluationSchema)
+```
+
+---
+
+## 1️⃣5️⃣ UPSC Workflow State
+
+```python
+from typing import List
+from typing_extensions import Annotated
+import operator
+
+class UPSCState(TypedDict):
+    essay: str
+    language_feedback: str
+    analysis_feedback: str
+    clarity_feedback: str
+    overall_feedback: str
+    individual_scores: Annotated[List[int], operator.add]
+    average_score: float
+```
+
+📌 `operator.add` is a **reducer function** used to merge scores from parallel nodes.
+
+---
+
+## 1️⃣6️⃣ Evaluation Nodes (Parallel)
+
+### Language Evaluation
+
+```python
+def evaluate_language(state: UPSCState):
+    result = structured_llm.invoke(
+        f"Evaluate language quality:\n{state['essay']}"
+    )
+    return {
+        "language_feedback": result.feedback,
+        "individual_scores": [result.score]
+    }
+```
+
+> Analysis and Clarity nodes are similar (only prompt and key name change).
+
+---
+
+## 1️⃣7️⃣ Final Evaluation Node
+
+```python
+def final_evaluation(state: UPSCState):
+    avg = sum(state["individual_scores"]) / len(state["individual_scores"])
+
+    summary_prompt = f"""
+    Language Feedback: {state['language_feedback']}
+    Analysis Feedback: {state['analysis_feedback']}
+    Clarity Feedback: {state['clarity_feedback']}
+    """
+
+    summary = llm.invoke(summary_prompt).content
+
+    return {
+        "overall_feedback": summary,
+        "average_score": avg
+    }
+```
+
+---
+
+## 1️⃣8️⃣ Key Concepts Learned 🎯
+
+### ✅ Parallel Workflows
+
+* Nodes run simultaneously
+* Use partial state updates
+
+### ✅ Structured Output
+
+* Reliable LLM responses
+* Schema-based validation
+
+### ✅ Reducer Functions
+
+* Merge parallel outputs
+* Example: `operator.add`
+
+### ✅ LangChain + LangGraph Together
+
+* LangChain → LLM logic
+* LangGraph → workflow orchestration
+
+---
+
+## 1️⃣9️⃣ Final Takeaway
+
+Once you understand **nodes, edges, partial state updates, structured output, and reducers**, you can build **very powerful Agentic AI systems**.
+
+This foundation will help you:
+
+* Build real-world AI agents
+* Create scalable workflows
+* Avoid common parallel execution bugs
+
+---
+
+🚀 **You are now ready to build parallel, production-grade Agentic AI workflows using LangGraph.**
+
+
 
