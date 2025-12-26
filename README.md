@@ -2148,5 +2148,465 @@ This foundation will help you:
 
 🚀 **You are now ready to build parallel, production-grade Agentic AI workflows using LangGraph.**
 
+# 📘 LangGraph Conditional Workflows – Simple English Notes
+
+*(Agentic AI using LangGraph – Video 7)*
+
+---
+
+## 1️⃣ What we learned before this video
+
+In the LangGraph playlist, we have already learned **two types of workflows**:
+
+### ✅ 1. Sequential Workflow
+
+* Tasks run **one after another**
+* Linear execution
+
+**Example:**
+
+```
+Task1 → Task2 → Task3 → Task4
+```
+
+---
+
+### ✅ 2. Parallel Workflow
+
+* Multiple tasks run **at the same time**
+* Branching happens, but **all branches execute**
+
+**Example:**
+
+```
+        → Task2 →
+Task1                 → Task4
+        → Task3 →
+```
+
+---
+
+## 2️⃣ What is a Conditional Workflow? (NEW TOPIC)
+
+### 🔹 Definition
+
+A **Conditional Workflow** is a workflow where:
+
+* Multiple branches exist
+* **Only ONE branch executes**
+* The branch is chosen based on a **condition**
+
+👉 It is exactly like **if–else** in programming.
+
+---
+
+### 🔹 Difference between Parallel & Conditional Workflow
+
+| Parallel Workflow      | Conditional Workflow         |
+| ---------------------- | ---------------------------- |
+| All branches run       | Only one branch runs         |
+| No condition           | Condition decides path       |
+| Tasks execute together | Tasks are mutually exclusive |
+
+---
+
+### 🔹 Example Flow
+
+```
+Task1
+  |
+  |-- if condition A → Task2 → Task4
+  |
+  |-- if condition B → Task3 → Task4
+```
+
+🚫 **Task2 and Task3 never run together**
+
+---
+
+### ⚠️ Why Conditional Workflows are IMPORTANT
+
+* Almost every **real-world agentic AI system needs conditions**
+* Just like `if-else` is critical in programming,
+  **conditional branching is critical in LangGraph**
+
+---
+
+## 3️⃣ How we approach this topic
+
+We build **2 workflows**:
+
+### 1️⃣ Non-LLM workflow
+
+* Quadratic Equation Solver
+* Focus: **Concept clarity**
+
+### 2️⃣ LLM-based workflow
+
+* Customer Review Handling
+* Focus: **Real-world AI system**
+
+---
+
+# 🧮 WORKFLOW 1: Quadratic Equation (Non-LLM)
+
+---
+
+## 4️⃣ Quadratic Equation Refresher
+
+### General Form
+
+```
+ax² + bx + c = 0
+```
+
+### Discriminant
+
+```
+D = b² - 4ac
+```
+
+### Conditions
+
+| Discriminant (D) | Roots             |
+| ---------------- | ----------------- |
+| D > 0            | Two real roots    |
+| D = 0            | One repeated root |
+| D < 0            | No real roots     |
+
+---
+
+## 5️⃣ Workflow Design
+
+### Steps
+
+1. Take input `a, b, c`
+2. Display equation
+3. Calculate discriminant
+4. Conditionally choose:
+
+   * Real roots
+   * Repeated root
+   * No real roots
+5. End workflow
+
+---
+
+## 6️⃣ State Definition
+
+```python
+from typing import TypedDict
+
+class QuadState(TypedDict):
+    a: float
+    b: float
+    c: float
+    equation: str
+    discriminant: float
+    result: str
+```
+
+---
+
+## 7️⃣ Create Graph
+
+```python
+from langgraph.graph import StateGraph
+
+graph = StateGraph(QuadState)
+```
+
+---
+
+## 8️⃣ Node 1: Show Equation
+
+```python
+def show_equation(state: QuadState):
+    eq = f"{state['a']}x² + {state['b']}x + {state['c']}"
+    return {"equation": eq}
+```
+
+---
+
+## 9️⃣ Node 2: Calculate Discriminant
+
+```python
+def calculate_discriminant(state: QuadState):
+    d = state["b"]**2 - 4 * state["a"] * state["c"]
+    return {"discriminant": d}
+```
+
+---
+
+## 🔟 Connect Initial Nodes
+
+```python
+graph.add_node("show_equation", show_equation)
+graph.add_node("calculate_discriminant", calculate_discriminant)
+
+graph.add_edge("START", "show_equation")
+graph.add_edge("show_equation", "calculate_discriminant")
+```
+
+---
+
+## 1️⃣1️⃣ Root Calculation Nodes
+
+### ✔️ Real Roots
+
+```python
+import math
+
+def real_roots(state: QuadState):
+    d = state["discriminant"]
+    a = state["a"]
+    b = state["b"]
+    r1 = (-b + math.sqrt(d)) / (2 * a)
+    r2 = (-b - math.sqrt(d)) / (2 * a)
+    return {"result": f"Roots are {r1} and {r2}"}
+```
+
+---
+
+### ✔️ Repeated Root
+
+```python
+def repeated_root(state: QuadState):
+    a = state["a"]
+    b = state["b"]
+    r = -b / (2 * a)
+    return {"result": f"Repeated root is {r}"}
+```
+
+---
+
+### ❌ No Real Roots
+
+```python
+def no_real_roots(state: QuadState):
+    return {"result": "No real roots"}
+```
+
+---
+
+## 1️⃣2️⃣ Condition Function (MOST IMPORTANT)
+
+```python
+def check_condition(state: QuadState):
+    d = state["discriminant"]
+    if d > 0:
+        return "real_roots"
+    elif d == 0:
+        return "repeated_root"
+    else:
+        return "no_real_roots"
+```
+
+---
+
+## 1️⃣3️⃣ Conditional Edges
+
+```python
+graph.add_conditional_edges(
+    "calculate_discriminant",
+    check_condition
+)
+```
+
+---
+
+## 1️⃣4️⃣ End Connections
+
+```python
+graph.add_edge("real_roots", "END")
+graph.add_edge("repeated_root", "END")
+graph.add_edge("no_real_roots", "END")
+
+workflow = graph.compile()
+```
+
+---
+
+## 1️⃣5️⃣ Run Workflow
+
+```python
+workflow.invoke({"a": 4, "b": -5, "c": -4})
+```
+
+---
+
+### 🎯 Key Learning (Workflow 1)
+
+Conditional routing is done using:
+
+* A **condition function**
+* `add_conditional_edges()`
+
+---
+
+# 🤖 WORKFLOW 2: LLM-Based Review Handling
+
+---
+
+## 16️⃣ Problem Statement
+
+We receive a **customer review** and must:
+
+* Detect sentiment
+* Respond differently for:
+
+  * Positive review
+  * Negative review
+
+---
+
+## 17️⃣ Workflow Design
+
+```
+Review
+  ↓
+Find Sentiment (LLM)
+  ↓
+IF Positive → Positive Response
+IF Negative → Diagnosis → Negative Response
+```
+
+---
+
+## 18️⃣ Structured Output: Sentiment Schema
+
+```python
+from pydantic import BaseModel
+from typing import Literal
+
+class SentimentSchema(BaseModel):
+    sentiment: Literal["positive", "negative"]
+```
+
+---
+
+## 19️⃣ LLM Setup
+
+```python
+from langchain_openai import ChatOpenAI
+
+model = ChatOpenAI(model="gpt-4o-mini")
+
+structured_model = model.with_structured_output(SentimentSchema)
+```
+
+---
+
+## 20️⃣ Review State
+
+```python
+from typing import TypedDict
+
+class ReviewState(TypedDict):
+    review: str
+    sentiment: Literal["positive", "negative"]
+    diagnosis: dict
+    response: str
+```
+
+---
+
+## 21️⃣ Node: Find Sentiment
+
+```python
+def find_sentiment(state: ReviewState):
+    prompt = f"Find sentiment of this review:\n{state['review']}"
+    result = structured_model.invoke(prompt)
+    return {"sentiment": result.sentiment}
+```
+
+---
+
+## 22️⃣ Condition Function
+
+```python
+def check_sentiment(state: ReviewState):
+    if state["sentiment"] == "positive":
+        return "positive_response"
+    else:
+        return "run_diagnosis"
+```
+
+---
+
+## 23️⃣ Positive Response Node
+
+```python
+def positive_response(state: ReviewState):
+    prompt = f"Write a warm thank you reply for:\n{state['review']}"
+    res = model.invoke(prompt)
+    return {"response": res.content}
+```
+
+---
+
+## 24️⃣ Diagnosis Schema
+
+```python
+class DiagnosisSchema(BaseModel):
+    issue_type: Literal["UI", "Performance", "Bug", "Support", "Other"]
+    tone: Literal["Calm", "Frustrated", "Angry"]
+    urgency: Literal["Low", "Medium", "High"]
+```
+
+---
+
+## 25️⃣ Diagnosis Node
+
+```python
+diagnosis_model = model.with_structured_output(DiagnosisSchema)
+
+def run_diagnosis(state: ReviewState):
+    prompt = f"Diagnose this review:\n{state['review']}"
+    result = diagnosis_model.invoke(prompt)
+    return {"diagnosis": result.model_dump()}
+```
+
+---
+
+## 26️⃣ Negative Response Node
+
+```python
+def negative_response(state: ReviewState):
+    d = state["diagnosis"]
+    prompt = f"""
+User has issue: {d['issue_type']}
+Tone: {d['tone']}
+Urgency: {d['urgency']}
+Write empathetic response.
+"""
+    res = model.invoke(prompt)
+    return {"response": res.content}
+```
+
+---
+
+## 27️⃣ Final Graph Connections
+
+```python
+graph.add_conditional_edges("find_sentiment", check_sentiment)
+
+graph.add_edge("positive_response", "END")
+graph.add_edge("run_diagnosis", "negative_response")
+graph.add_edge("negative_response", "END")
+```
+
+---
+
+## 🎯 Final Takeaways
+
+* Conditional workflows = **if–else logic for agents**
+* Core steps:
+
+  1. Write condition function
+  2. Return next node name
+  3. Use `add_conditional_edges()`
+
+👉 This concept is used **almost everywhere in advanced Agentic AI systems**
 
 
