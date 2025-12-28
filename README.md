@@ -2970,4 +2970,427 @@ result = workflow.invoke(initial_state)
 
 🚀 **You now know how to build looping agents in LangGraph!**
 
+# 📘 Building a Chatbot with Memory using LangGraph
+
+*(Simple English Notes + Code)*
+
+---
+
+## 1️⃣ What we have learned so far in the LangGraph playlist
+
+Till now, we have learned:
+
+* LangGraph fundamentals
+* Basics of Agentic AI
+* Different types of workflows:
+
+  * ✅ Sequential Workflow
+  * ✅ Parallel Workflow
+  * ✅ Conditional Workflow
+  * ✅ Iterative / Looping Workflow
+
+At this point, we know enough basics to start building real Agentic AI applications.
+
+---
+
+## 2️⃣ What we are building now
+
+We will now deep dive and build a real chatbot using LangGraph.
+
+### This chatbot will support:
+
+* Normal chatting (LLM-based chat)
+* Memory (remember past conversation)
+
+### Later we will add:
+
+* RAG (document-based answers)
+* Tools (actions)
+* UI
+* LangSmith integration
+
+### Advanced concepts we will cover:
+
+* Memory
+* Persistence
+* Checkpointers
+* Human-in-the-loop (HITL)
+* Retry logic
+* Fault tolerance
+
+👉 **This video = Part 1**
+We build a **basic chatbot with memory support**.
+
+---
+
+## 3️⃣ Chatbot = Workflow (Important Concept)
+
+A chatbot is basically a **workflow**.
+
+### Our chatbot workflow:
+
+* It is a **Sequential Workflow**
+* It has **only ONE node**
+
+### Flow:
+
+```
+START
+  ↓
+User Message
+  ↓
+Chat Node (LLM)
+  ↓
+AI Response
+  ↓
+END
+```
+
+This process repeats while the user keeps chatting.
+
+---
+
+## 4️⃣ What is the STATE of this workflow?
+
+In LangGraph, **every workflow needs a state**.
+
+### For a chatbot, what is the most important data?
+
+👉 **Conversation messages**
+
+So our state will store:
+
+* All messages exchanged between **user and AI**
+
+---
+
+## 5️⃣ Defining the Chat State
+
+### Why not just `list[str]`?
+
+Because LangChain / LangGraph works with **message objects**, not plain strings.
+
+### Types of messages:
+
+* `HumanMessage`
+* `AIMessage`
+* `SystemMessage`
+* `ToolMessage`
+
+All of them inherit from **BaseMessage**.
+
+### ✅ Chat State Definition
+
+```python
+from typing import Annotated, TypedDict
+from langgraph.graph.message import add_messages
+from langchain_core.messages import BaseMessage
+
+class ChatState(TypedDict):
+    messages: Annotated[list[BaseMessage], add_messages]
+```
+
+### Why `add_messages` reducer?
+
+* Default state behavior **replaces old values**
+* We want to **append messages**, not replace them
+* `add_messages` is optimized for message lists
+
+---
+
+## 6️⃣ Creating the Graph
+
+```python
+from langgraph.graph import StateGraph, START, END
+
+graph = StateGraph(ChatState)
+```
+
+---
+
+## 7️⃣ Creating the Chat Node
+
+This node:
+
+* Takes messages from state
+* Sends them to the LLM
+* Stores the AI response back in state
+
+### Chat Node Function
+
+```python
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI()
+
+def chat_node(state: ChatState):
+    messages = state["messages"]
+    response = llm.invoke(messages)
+
+    return {
+        "messages": [response]
+    }
+```
+
+---
+
+## 8️⃣ Adding Node & Edges
+
+```python
+graph.add_node("chat_node", chat_node)
+
+graph.add_edge(START, "chat_node")
+graph.add_edge("chat_node", END)
+```
+
+---
+
+## 9️⃣ Compile the Graph
+
+```python
+chatbot = graph.compile()
+```
+
+### Workflow structure:
+
+```
+START → chat_node → END
+```
+
+---
+
+## 🔟 Testing the chatbot (Single message)
+
+```python
+from langchain_core.messages import HumanMessage
+
+initial_state = {
+    "messages": [HumanMessage(content="What is the capital of India?")]
+}
+
+result = chatbot.invoke(initial_state)
+
+print(result["messages"][-1].content)
+```
+
+✅ **Output:**
+
+```
+The capital of India is New Delhi.
+```
+
+---
+
+## 1️⃣1️⃣ Problem: This is NOT a real chatbot yet
+
+❌ It answers only one question
+❌ Conversation does not continue
+
+A real chatbot should:
+
+* Keep chatting
+* Remember previous messages
+
+---
+
+## 1️⃣2️⃣ Adding a Chat Loop (Console Chatbot)
+
+```python
+while True:
+    user_input = input("You: ")
+
+    if user_input.strip().lower() in ["exit", "quit", "bye"]:
+        print("Chat ended.")
+        break
+
+    response = chatbot.invoke({
+        "messages": [HumanMessage(content=user_input)]
+    })
+
+    ai_reply = response["messages"][-1].content
+    print("AI:", ai_reply)
+```
+
+---
+
+## 1️⃣3️⃣ BIG PROBLEM: Chatbot forgets everything 😵
+
+### Example:
+
+```
+User: Hi, my name is Nitesh
+AI: Hello Nitesh!
+
+User: What is my name?
+AI: Sorry, I don't know.
+```
+
+### Why this happens?
+
+* Each `invoke()` call starts fresh
+* State is **not persisted**
+* Previous conversation is lost
+
+---
+
+## 1️⃣4️⃣ Why state is getting erased?
+
+* Each loop iteration calls `chatbot.invoke()`
+* Workflow runs → reaches `END`
+* State is discarded
+* Next call starts from scratch
+
+---
+
+## 1️⃣5️⃣ Solution: Persistence (Memory)
+
+### What is Persistence?
+
+Persistence means:
+
+* Do **NOT** delete state after workflow ends
+* Store it somewhere:
+
+  * RAM (memory)
+  * Database (production)
+
+👉 For now, we use **RAM-based memory**.
+
+---
+
+## 1️⃣6️⃣ Adding Memory using Checkpointer
+
+### Import `MemorySaver`
+
+```python
+from langgraph.checkpoint.memory import MemorySaver
+```
+
+### Create a Checkpointer
+
+```python
+checkpointer = MemorySaver()
+```
+
+### Compile graph with persistence
+
+```python
+chatbot = graph.compile(checkpointer=checkpointer)
+```
+
+---
+
+## 1️⃣7️⃣ Thread ID (VERY IMPORTANT)
+
+### What is a thread?
+
+* One conversation = one thread
+* Different users = different threads
+
+```python
+thread_id = "nitesh-chat"
+```
+
+---
+
+## 1️⃣8️⃣ Passing config while invoking
+
+```python
+config = {
+    "configurable": {
+        "thread_id": thread_id
+    }
+}
+```
+
+### Updated invoke call
+
+```python
+response = chatbot.invoke(
+    {
+        "messages": [HumanMessage(content=user_input)]
+    },
+    config=config
+)
+```
+
+---
+
+## 1️⃣9️⃣ Now chatbot REMEMBERS 🎉
+
+### Example:
+
+```
+User: Hi my name is Nitesh
+AI: Hello Nitesh!
+
+User: What is my name?
+AI: Your name is Nitesh.
+```
+
+### Math example:
+
+```
+User: Add 10 to 100
+AI: 110
+
+User: Multiply the result by 2
+AI: 220
+```
+
+---
+
+## 2️⃣0️⃣ Why memory works now (Behind the scenes)
+
+* After each workflow execution:
+
+  * State is saved in RAM
+* Next `invoke()`:
+
+  * Previous state is fetched
+  * New messages are appended
+
+### Thanks to:
+
+* `add_messages` reducer
+* `MemorySaver` checkpointer
+* `thread_id`
+
+---
+
+## 2️⃣1️⃣ Important Limitation of RAM Memory
+
+❌ If program restarts → memory is lost
+
+### Production systems use:
+
+* Databases (Postgres, Redis, etc.)
+
+So chatbot remembers conversations even after restart.
+
+---
+
+## 2️⃣2️⃣ Summary
+
+### What we built:
+
+* ✅ LangGraph-based chatbot
+* ✅ Message-based state
+* ✅ Reducer-based history handling
+* ✅ Loop-based chatting
+* ✅ Memory using persistence
+* ✅ Thread-based conversations
+
+---
+
+🎯 **Next Steps:**
+
+* Deep dive into **Persistence**
+* Understanding **Threads & Checkpointers**
+* Adding **RAG, Tools, UI, and HITL**
+
+---
+
+🚀 You are now building **industry-grade Agentic AI systems** with LangGraph!
+
 
