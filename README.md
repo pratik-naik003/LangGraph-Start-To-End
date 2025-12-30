@@ -3804,5 +3804,371 @@ workflow.update_state(
 
 📌 **Without persistence → LangGraph is incomplete**
 
+# 📘 Building a Chatbot UI using LangGraph + Streamlit
+
+*(Simple English Notes with Code)*
+
+---
+
+## 1️⃣ What problem are we solving?
+
+In the previous video, we built a LangGraph chatbot with:
+
+* Working logic ✅
+* Short-term memory ✅
+
+❌ **But there was one big problem**
+The chatbot had **no UI (User Interface)**.
+
+We were chatting with it only inside:
+
+* Jupyter Notebook
+* Terminal
+
+👉 This is **not user-friendly**.
+
+---
+
+## 2️⃣ Goal of this video
+
+We will:
+
+* ✅ Give our LangGraph chatbot a **proper web UI**
+* ✅ Build a **chat-style interface (like ChatGPT)**
+* ✅ Use **Streamlit** to create the frontend
+* ✅ Connect **Streamlit (Frontend)** with **LangGraph (Backend)**
+
+---
+
+## 3️⃣ Final Output (What we will build)
+
+* Clean chat UI
+* User and AI messages appear differently
+* Automatic scrolling
+* Chatbot remembers previous messages
+* Supports:
+
+  * General questions
+  * Follow-up questions
+  * Memory-based questions ("What is my name?")
+
+---
+
+## 4️⃣ Tech Stack Used
+
+| Layer         | Technology              |
+| ------------- | ----------------------- |
+| Backend       | LangGraph               |
+| LLM           | LangChain-supported LLM |
+| Frontend      | Streamlit               |
+| Memory        | LangGraph Checkpointer  |
+| State Storage | Streamlit Session State |
+
+---
+
+## 5️⃣ High-Level Architecture
+
+```
+User
+  ↓
+Streamlit UI (Frontend)
+  ↓
+LangGraph Chatbot (Backend)
+  ↓
+LLM
+  ↓
+Response → UI
+```
+
+---
+
+## 6️⃣ Project Structure
+
+```
+project/
+│
+├── langgraph_backend.py   # Chatbot logic (LangGraph)
+├── streamlit_frontend.py  # UI code (Streamlit)
+├── .env                   # API keys
+└── venv/                  # Virtual environment
+```
+
+---
+
+## 7️⃣ Backend Code (LangGraph)
+
+This code is the **same as the previous chatbot**, no major changes.
+
+### 🔹 Key Points
+
+* Defines state
+* Creates a simple graph
+* Uses **InMemory Checkpointer**
+* Exposes a `chatbot` object
+
+### 🔹 Example (Simplified)
+
+```python
+from langgraph.graph import StateGraph, END
+from langchain_core.messages import HumanMessage, AIMessage
+from langgraph.checkpoint.memory import MemorySaver
+
+class ChatState(dict):
+    messages: list
+
+def chat_node(state):
+    # Call LLM here
+    response = llm.invoke(state["messages"])
+    return {"messages": state["messages"] + [response]}
+
+builder = StateGraph(ChatState)
+builder.add_node("chat", chat_node)
+builder.set_entry_point("chat")
+builder.add_edge("chat", END)
+
+checkpointer = MemorySaver()
+chatbot = builder.compile(checkpointer=checkpointer)
+```
+
+---
+
+## 8️⃣ Why we split Backend & Frontend?
+
+| Backend            | Frontend        |
+| ------------------ | --------------- |
+| LangGraph workflow | Streamlit UI    |
+| LLM calls          | Input box       |
+| Memory             | Message display |
+
+👉 **Clean separation = scalable design**
+
+---
+
+## 9️⃣ Streamlit Chat UI – Core Components
+
+Streamlit provides **two special chat components**:
+
+### 1️⃣ `st.chat_message()`
+
+Used to display messages
+
+### 2️⃣ `st.chat_input()`
+
+Used to take user input
+
+---
+
+## 🔟 Displaying Chat Messages
+
+### User Message
+
+```python
+import streamlit as st
+
+with st.chat_message("user"):
+    st.text("Hi")
+```
+
+### Assistant Message
+
+```python
+with st.chat_message("assistant"):
+    st.text("Hello! How can I help you?")
+```
+
+👉 Streamlit automatically shows icons for:
+
+* user 👤
+* assistant 🤖
+
+---
+
+## 1️⃣1️⃣ Chat Input Box
+
+```python
+user_input = st.chat_input("Type here...")
+```
+
+* Appears at the bottom
+* Press **Enter** to submit
+* Value stored in `user_input`
+
+---
+
+## 1️⃣2️⃣ Problem: Messages disappear on new input
+
+### Why?
+
+Streamlit **reruns the entire script** every time:
+
+* User presses Enter
+* User interacts with UI
+
+❌ Old messages are lost
+
+---
+
+## 1️⃣3️⃣ Solution: `st.session_state`
+
+### What is Session State?
+
+* A dictionary that **persists across reruns**
+* Data stays until the page is refreshed
+
+---
+
+## 1️⃣4️⃣ Initialize Message History
+
+```python
+if "message_history" not in st.session_state:
+    st.session_state.message_history = []
+```
+
+---
+
+## 1️⃣5️⃣ Message Format (Very Important)
+
+Each message is stored as a dictionary:
+
+```python
+{
+    "role": "user",        # or "assistant"
+    "content": "Hello"
+}
+```
+
+All messages are stored inside a list.
+
+---
+
+## 1️⃣6️⃣ Display Full Chat History
+
+```python
+for msg in st.session_state.message_history:
+    with st.chat_message(msg["role"]):
+        st.text(msg["content"])
+```
+
+---
+
+## 1️⃣7️⃣ Add New User Message
+
+```python
+if user_input:
+    st.session_state.message_history.append({
+        "role": "user",
+        "content": user_input
+    })
+
+    with st.chat_message("user"):
+        st.text(user_input)
+```
+
+---
+
+## 1️⃣8️⃣ Dummy Chatbot (Copy-Cat Bot)
+
+Assistant replies with the **same message**:
+
+```python
+assistant_reply = user_input
+
+st.session_state.message_history.append({
+    "role": "assistant",
+    "content": assistant_reply
+})
+
+with st.chat_message("assistant"):
+    st.text(assistant_reply)
+```
+
+✅ This confirms:
+
+* UI works
+* Memory works
+* Session state works
+
+---
+
+## 1️⃣9️⃣ Connecting Streamlit to LangGraph
+
+### Import chatbot object
+
+```python
+from langgraph_backend import chatbot
+from langchain_core.messages import HumanMessage
+```
+
+---
+
+## 2️⃣0️⃣ Calling `chatbot.invoke()`
+
+```python
+response = chatbot.invoke(
+    {
+        "messages": [HumanMessage(content=user_input)]
+    },
+    config={
+        "configurable": {
+            "thread_id": "thread-1"
+        }
+    }
+)
+```
+
+⚠️ `thread_id` is **required** because:
+
+* We are using a checkpointer
+* Needed for memory tracking
+
+---
+
+## 2️⃣1️⃣ Extract AI Response
+
+```python
+ai_message = response["messages"][-1].content
+```
+
+---
+
+## 2️⃣2️⃣ Display AI Response
+
+```python
+st.session_state.message_history.append({
+    "role": "assistant",
+    "content": ai_message
+})
+
+with st.chat_message("assistant"):
+    st.text(ai_message)
+```
+
+---
+
+## 2️⃣3️⃣ Final Result
+
+🎉 You now have:
+
+* LangGraph-powered chatbot
+* Streamlit UI
+* Persistent memory
+* Real AI responses
+* Clean frontend–backend separation
+
+---
+
+## 2️⃣4️⃣ Key Takeaways
+
+* Streamlit reruns scripts → use `session_state`
+* Chat UI = `chat_message` + `chat_input`
+* LangGraph backend stays clean
+* UI logic stays simple
+* This design scales easily (RAG, tools, streaming)
+
+---
+
+🚀 **You now have a production-ready foundation for Agentic AI chatbots.**
+
+
 
 
