@@ -4806,6 +4806,343 @@ Next Video:
 ✅ Persistent conversations
 ✅ Chats survive refresh
 
+# 📘 LangGraph Chatbot – Database Persistence using SQLite Checkpointer
+
+(Simple English Notes with Code)
+
+---
+
+## 1️⃣ What we have built so far (Recap)
+
+In the previous videos of **Agentic AI using LangGraph**, we built a chatbot step by step.
+
+### ✅ Progress till now
+
+* Basic LangGraph chatbot (console-based)
+* UI added using Streamlit
+* Streaming responses
+* Thread-based conversations
+
+👉 Each thread represents a **separate conversation**.
+
+👉 Users can **switch between past chats**.
+
+### 🧠 Current chatbot features
+
+* Start a new chat
+* Resume old conversations
+* Ask memory-based questions like:
+
+  * *"What is my name?"*
+* Different threads remember different users
+
+---
+
+## 2️⃣ The Big Problem (Very Important)
+
+### ❌ What was wrong?
+
+We were using **InMemorySaver** for memory.
+
+That means:
+
+* All conversations were stored in **RAM**
+* When:
+
+  * App stops ❌
+  * Page refreshes ❌
+
+👉 **All chats are lost**
+
+### Example
+
+* You say: *"Hi, my name is Nitesh"*
+* App restarts
+* Bot forgets everything 😢
+
+---
+
+## 3️⃣ Goal of This Video
+
+### ✅ What we want to achieve
+
+* Store conversations **permanently**
+* Chats should **not disappear**
+* Even after:
+
+  * App restart
+  * Browser refresh
+  * Multiple days later
+
+👉 **Solution: Database-based persistence**
+
+---
+
+## 4️⃣ LangGraph Persistence Options
+
+LangGraph supports different **Checkpointers**:
+
+| Checkpointer  | Storage    | Use case                 |
+| ------------- | ---------- | ------------------------ |
+| InMemorySaver | RAM        | Testing only             |
+| SQLiteSaver   | SQLite DB  | Learning / Prototyping ✅ |
+| PostgresSaver | PostgreSQL | Production               |
+
+👉 In this video, we use **SQLiteSaver**
+
+---
+
+## 5️⃣ Step 1: Install SQLite Checkpointer
+
+This is **not built-in** yet.
+
+```bash
+pip install langgraph-checkpoint-sqlite
+```
+
+---
+
+## 6️⃣ Backend Changes (Most Important Part)
+
+### 🔹 Replace InMemorySaver
+
+❌ Old:
+
+```python
+from langgraph.checkpoint.memory import MemorySaver
+checkpointer = MemorySaver()
+```
+
+✅ New:
+
+```python
+from langgraph.checkpoint.sqlite import SQLiteSaver
+import sqlite3
+```
+
+---
+
+### 🔹 Create SQLite Database Connection
+
+```python
+conn = sqlite3.connect(
+    "chatbot.db",
+    check_same_thread=False
+)
+```
+
+#### ❓ Why `check_same_thread=False`?
+
+* SQLite normally allows **single-thread access**
+* Our chatbot uses **multiple threads**
+* This disables SQLite’s thread restriction
+
+---
+
+### 🔹 Create SQLite Checkpointer
+
+```python
+checkpointer = SQLiteSaver(conn)
+```
+
+✅ That’s it!
+
+Now LangGraph automatically:
+
+* Stores messages
+* Stores state
+* Stores checkpoints
+
+---
+
+## 7️⃣ Testing Database Persistence (Backend)
+
+### 🔹 Send a message
+
+```python
+response = chatbot.invoke(
+    {"messages": [("user", "Hi my name is Nitesh")]},
+    config={"configurable": {"thread_id": "thread-1"}}
+)
+
+print(response)
+```
+
+### 🔹 What happens?
+
+* A file **chatbot.db** is created
+* Messages are saved inside the database
+
+---
+
+### 🔹 Restart program & ask again
+
+```python
+response = chatbot.invoke(
+    {"messages": [("user", "What is my name?")]},
+    config={"configurable": {"thread_id": "thread-1"}}
+)
+```
+
+✅ Output:
+
+```
+Your name is Nitesh
+```
+
+👉 Memory is restored from database 🎉
+
+---
+
+## 8️⃣ Thread-wise Memory (Very Powerful Feature)
+
+### Thread 1
+
+```python
+thread_id = "thread-1"
+Hi my name is Nitesh
+```
+
+### Thread 2
+
+```python
+thread_id = "thread-2"
+Hi my name is Rahul
+```
+
+### Asking the same question
+
+```text
+What is my name?
+```
+
+| Thread   | Answer |
+| -------- | ------ |
+| thread-1 | Nitesh |
+| thread-2 | Rahul  |
+
+👉 Same chatbot, **different memories per thread**
+
+---
+
+## 9️⃣ Viewing SQLite Database (Optional but Recommended)
+
+### Best way (VS Code)
+
+1. Install **SQLite Viewer** extension
+2. Open `chatbot.db`
+3. View:
+
+   * Threads
+   * Messages
+   * Checkpoints
+
+You’ll observe:
+
+* Multiple checkpoints per thread
+* Each execution creates **3 checkpoints**:
+
+  * Start
+  * Chat node
+  * End
+
+---
+
+## 🔟 Extracting All Existing Threads (Backend)
+
+### ❓ Why needed?
+
+Frontend must:
+
+* Show old threads
+* Not start from an empty list
+
+---
+
+### 🔹 Get all checkpoints
+
+```python
+checkpoints = checkpointer.list(None)
+```
+
+---
+
+### 🔹 Extract unique thread IDs
+
+```python
+def retrieve_all_threads():
+    all_threads = set()
+
+    for checkpoint in checkpointer.list(None):
+        thread_id = checkpoint.config["configurable"]["thread_id"]
+        all_threads.add(thread_id)
+
+    return list(all_threads)
+```
+
+✅ Returns:
+
+```python
+["thread-1", "thread-2"]
+```
+
+---
+
+## 1️⃣1️⃣ Frontend Changes (Streamlit)
+
+### ❌ Old behavior
+
+```python
+chat_threads = []
+```
+
+### ✅ New behavior (Fetch from database)
+
+```python
+from langgraph_database_backend import chatbot, retrieve_all_threads
+
+chat_threads = retrieve_all_threads()
+```
+
+---
+
+## 1️⃣2️⃣ Final Result (What We Achieved)
+
+### ✅ Features now available
+
+* Persistent chat history
+* Thread-based memory
+* Database-backed storage
+
+Chats survive:
+
+* Refresh
+* Restart
+* Days later
+
+### 🧑‍💻 User Experience
+
+* Old chats automatically load
+* Conversations resume exactly where left off
+* Works just like **ChatGPT**
+
+---
+
+## 1️⃣3️⃣ Key Takeaways
+
+* **Persistence = Game changer**
+* SQLite is perfect for:
+
+  * Learning
+  * Prototyping
+* Thread IDs control memory isolation
+* LangGraph handles database logic internally
+
+---
+
+🎉 You have now built a **persistent, production-style chatbot foundation using LangGraph**!
+
+
 
 
 
