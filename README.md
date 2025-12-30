@@ -4490,6 +4490,322 @@ Now your chatbot:
 
 📌 **Streaming is a small feature but gives 10x better user experience**
 
+📘 Resume Chat Feature in LangGraph Chatbot
+
+(Simple English Notes with Code)
+
+1️⃣ What we have built so far (Recap)
+
+In the Agentic AI using LangGraph series, we have been improving a chatbot step by step.
+
+So far, we have added:
+
+✅ Basic chatbot (console-based)
+✅ Streamlit UI
+✅ Streaming responses (token-by-token output)
+
+👉 Streaming improved user experience because output appears instantly instead of waiting.
+
+2️⃣ What is the goal of this video?
+
+In this video, we add an important real-world feature:
+
+🔄 Resume Chat Feature
+
+Just like ChatGPT, users can:
+
+Start a new chat
+
+Resume old conversations
+
+Each conversation has its own memory
+
+Example:
+
+One chat remembers “My name is Nitesh”
+
+Another chat remembers “My name is Rahul”
+
+3️⃣ Final UI after this feature
+
+The chatbot UI will have two sections:
+
+🖥️ Main Area
+
+Chat with the AI
+
+Messages appear with memory
+
+📂 Sidebar
+
+New Chat button
+
+My Conversations list
+
+Click any conversation to resume it
+
+4️⃣ Important Architecture Decision
+❗ No backend changes needed
+
+Our chatbot is built in two parts:
+
+Layer	Tech
+Backend	LangGraph
+Frontend	Streamlit
+
+👉 Resume Chat is purely a frontend feature
+Backend already supports threads & state.
+
+5️⃣ Breaking the feature into small tasks
+
+Instead of coding everything at once, we divide it into small tasks:
+
+Build Sidebar UI
+
+Generate dynamic Thread IDs
+
+Store all thread IDs
+
+Start New Chat
+
+Resume Old Chat
+
+👉 This approach makes coding easy and bug-free
+
+6️⃣ Task 1: Sidebar UI
+What we want in sidebar:
+
+Title
+
+New Chat button
+
+My Conversations section
+
+Code (Streamlit)
+st.sidebar.title("LangGraph Chatbot")
+
+if st.sidebar.button("New Chat"):
+    pass
+
+st.sidebar.header("My Conversations")
+
+
+✅ Sidebar UI is now visible
+
+7️⃣ Task 2: Dynamic Thread ID generation
+❌ Problem
+
+Earlier we used:
+
+thread_id = "thread1"
+
+
+This fails when multiple chats exist.
+
+✅ Solution: Use UUID
+Utility function
+import uuid
+
+def generate_thread_id():
+    return str(uuid.uuid4())
+
+Store thread ID in session
+if "thread_id" not in st.session_state:
+    st.session_state.thread_id = generate_thread_id()
+
+Use thread ID in LangGraph config
+config = {
+    "configurable": {
+        "thread_id": st.session_state.thread_id
+    }
+}
+
+8️⃣ Task 3: Display current thread ID
+st.sidebar.text(st.session_state.thread_id)
+
+
+Now users can see which conversation is active.
+
+9️⃣ Task 4: New Chat functionality
+What should happen when user clicks “New Chat”?
+
+✔ Generate new thread ID
+✔ Replace old thread ID
+✔ Clear message history
+
+Utility function: Reset Chat
+def reset_chat():
+    st.session_state.thread_id = generate_thread_id()
+    st.session_state.message_history = []
+
+Button click logic
+if st.sidebar.button("New Chat"):
+    reset_chat()
+
+
+✅ New empty chat opens
+✅ Old messages disappear
+❌ But old threads are lost (problem)
+
+🔴 Problem Found
+
+When creating a new chat:
+
+Old conversations disappear
+
+Thread IDs are lost
+
+1️⃣0️⃣ Task 5: Store all conversations (Thread List)
+Create a list in session
+if "chat_threads" not in st.session_state:
+    st.session_state.chat_threads = []
+
+Utility function: Add Thread
+def add_thread(thread_id):
+    if thread_id not in st.session_state.chat_threads:
+        st.session_state.chat_threads.append(thread_id)
+
+Add thread on page load
+add_thread(st.session_state.thread_id)
+
+Add thread inside reset_chat()
+def reset_chat():
+    new_id = generate_thread_id()
+    st.session_state.thread_id = new_id
+    st.session_state.message_history = []
+    add_thread(new_id)
+
+1️⃣1️⃣ Show all threads in Sidebar
+for tid in st.session_state.chat_threads:
+    st.sidebar.text(tid)
+
+
+✅ All conversation IDs stay visible
+✅ Old chats are not lost
+
+1️⃣2️⃣ Make threads clickable (Buttons)
+for tid in st.session_state.chat_threads:
+    if st.sidebar.button(str(tid)):
+        pass
+
+
+Now threads are clickable.
+
+1️⃣3️⃣ Resume chat: Load old messages
+How do we fetch messages from LangGraph?
+
+LangGraph stores state per thread_id.
+
+Fetch state
+state = chatbot.get_state({
+    "configurable": {"thread_id": thread_id}
+})
+messages = state.values["messages"]
+
+1️⃣4️⃣ Convert LangGraph messages → UI format
+
+LangGraph format:
+
+HumanMessage
+
+AIMessage
+
+UI format:
+
+{
+  "role": "user" | "assistant",
+  "content": "text"
+}
+
+Utility function: Load Conversation
+from langchain_core.messages import HumanMessage
+
+def load_conversation(thread_id):
+    state = chatbot.get_state({
+        "configurable": {"thread_id": thread_id}
+    })
+    msgs = state.values["messages"]
+
+    temp_messages = []
+
+    for msg in msgs:
+        role = "user" if isinstance(msg, HumanMessage) else "assistant"
+        temp_messages.append({
+            "role": role,
+            "content": msg.content
+        })
+
+    st.session_state.message_history = temp_messages
+    st.session_state.thread_id = thread_id
+
+1️⃣5️⃣ Connect Resume Logic to Sidebar Button
+for tid in reversed(st.session_state.chat_threads):
+    if st.sidebar.button(str(tid)):
+        load_conversation(tid)
+
+
+✅ Clicking a thread:
+
+Loads old messages
+
+Restores memory
+
+Sets correct thread ID
+
+1️⃣6️⃣ Final Result (Demo)
+
+✔ Multiple conversations
+✔ Each has its own memory
+✔ Resume works perfectly
+✔ New chat doesn’t destroy old chats
+
+Example:
+
+Chat 1 → “My name is Nitesh”
+
+Chat 2 → “My name is Rahul”
+
+Switching works correctly
+
+1️⃣7️⃣ Small UI Improvement
+
+Show latest chat first
+
+for tid in reversed(st.session_state.chat_threads):
+    ...
+
+🧠 Homework for You
+
+Instead of showing raw UUIDs:
+
+👉 Generate human-readable titles like:
+
+“Factorial Code”
+
+“AI Job Crisis Blog”
+
+“Python Swap Program”
+
+(Hint: Use first user message as title)
+
+🔥 Important Limitation (Next Video Topic)
+
+Currently:
+
+Memory is stored in RAM
+
+Page refresh → all chats lost
+
+Why?
+
+We are using InMemory Checkpointer
+
+Next Video:
+
+✅ Connect LangGraph to a database
+✅ Persistent conversations
+✅ Chats survive refresh
+
 
 
 
