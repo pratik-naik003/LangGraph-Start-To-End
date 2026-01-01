@@ -5500,6 +5500,370 @@ When chatbot is live:
 
 🚀 **Your chatbot is now production-ready**
 
+# 📘 LangGraph Chatbot – Adding Tools (Actions)
+
+*(Simple English Notes with Code)*
+
+---
+
+## 1️⃣ Recap: What We Have Built So Far
+
+We are building an **Agentic AI Chatbot using LangGraph**.
+
+Till now, our chatbot has:
+
+* ✅ GUI (Streamlit UI)
+* ✅ Short-term memory
+* ✅ Database persistence
+* ✅ Streaming responses
+
+### ❌ Current Limitation
+
+The chatbot can **only talk**.
+
+It cannot perform actions like:
+
+* Calculations
+* Internet search
+* Fetch stock prices
+
+---
+
+## 2️⃣ Goal of This Video
+
+👉 **Add ACTION capabilities using Tools**
+
+After this:
+
+* Chatbot can chat normally
+* Chatbot can perform tasks using tools
+
+### Tools we will add:
+
+1️⃣ Calculator tool (numerical calculations)
+
+2️⃣ Internet search tool (DuckDuckGo)
+
+3️⃣ Stock price tool (real-time price)
+
+---
+
+## 3️⃣ What Are Tools? (Simple Explanation)
+
+A **Tool** is a function that the chatbot can call to perform real work.
+
+Examples:
+
+* Calculator → math
+* Search → internet
+* Stock API → live prices
+
+📌 The **LLM decides when to call a tool**.
+
+---
+
+## 4️⃣ High-Level Workflow (Before vs After)
+
+### ❌ Old Workflow (Chat only)
+
+```
+START → Chat Node → END
+```
+
+### ✅ New Workflow (Chat + Actions)
+
+```
+START → Chat Node
+          |
+          |-- Normal chat → END
+          |
+          |-- Tool needed → Tool Node → Chat Node → END
+```
+
+---
+
+## 5️⃣ Two NEW Important Concepts
+
+### 🔹 1. ToolNode
+
+**ToolNode** is a **pre-built LangGraph node**.
+
+It:
+
+* Holds all tools
+* Executes the correct tool automatically
+
+📌 Think of it as a **Tool Executor**.
+
+---
+
+### 🔹 2. tools_condition
+
+`tools_condition` decides:
+
+* Should we continue chatting?
+* OR should we call a tool?
+
+It creates a **conditional flow** in the graph.
+
+---
+
+## 6️⃣ Why Tool Output Must Go Back to LLM
+
+### ❌ Problem (Without Loop)
+
+* Tool returns raw JSON
+* Output is not user-friendly
+* Multi-step reasoning is not possible
+
+Example:
+
+```
+"Apple stock price → calculate cost of 50 shares"
+```
+
+❌ Impossible without a loop
+
+---
+
+### ✅ Solution: Create a Loop
+
+```
+Chat Node → Tool Node → Chat Node → Tool Node → Chat Node → END
+```
+
+With this loop, the LLM:
+
+* Reads tool output
+* Decides the next step
+* Formats the final user-friendly answer
+
+---
+
+## 7️⃣ Required Imports
+
+```python
+from langgraph.graph import StateGraph, START, END
+from langgraph.prebuilt import ToolNode, tools_condition
+
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage
+from langchain_core.tools import tool
+
+from langchain_community.tools import DuckDuckGoSearchRun
+from dotenv import load_dotenv
+```
+
+---
+
+## 8️⃣ Create the LLM
+
+```python
+load_dotenv()
+
+llm = ChatOpenAI(model="gpt-4o-mini")
+```
+
+---
+
+## 9️⃣ Define Tools
+
+### 🔹 Tool 1: DuckDuckGo Search (Prebuilt)
+
+```python
+search_tool = DuckDuckGoSearchRun()
+```
+
+---
+
+### 🔹 Tool 2: Calculator (Custom Tool)
+
+```python
+@tool
+def calculator(a: int, b: int, operation: str) -> int:
+    """
+    Performs basic arithmetic operations between two numbers.
+    operation can be add, subtract, multiply, divide
+    """
+    if operation == "add":
+        return a + b
+    elif operation == "subtract":
+        return a - b
+    elif operation == "multiply":
+        return a * b
+    elif operation == "divide":
+        return a / b
+    else:
+        return "Invalid operation"
+```
+
+📌 **Docstring is VERY IMPORTANT** – the LLM reads it to decide when to use this tool.
+
+---
+
+### 🔹 Tool 3: Stock Price Tool (Custom API Tool)
+
+```python
+@tool
+def get_stock_price(symbol: str) -> dict:
+    """
+    Returns the current stock price of a company using Alpha Vantage API.
+    """
+    import requests, os
+
+    api_key = os.getenv("ALPHA_VANTAGE_API_KEY")
+    url = (
+        "https://www.alphavantage.co/query"
+        f"?function=GLOBAL_QUOTE&symbol={symbol}&apikey={api_key}"
+    )
+
+    response = requests.get(url).json()
+    return response
+```
+
+---
+
+## 🔟 Bind Tools to LLM
+
+```python
+tools = [search_tool, calculator, get_stock_price]
+llm_with_tools = llm.bind_tools(tools)
+```
+
+---
+
+## 1️⃣1️⃣ Define State
+
+```python
+from typing import TypedDict, List
+from langchain_core.messages import BaseMessage
+
+class State(TypedDict):
+    messages: List[BaseMessage]
+```
+
+---
+
+## 1️⃣2️⃣ Chat Node
+
+```python
+def chat_node(state: State):
+    response = llm_with_tools.invoke(state["messages"])
+    return {"messages": state["messages"] + [response]}
+```
+
+---
+
+## 1️⃣3️⃣ Create ToolNode
+
+```python
+tool_node = ToolNode(tools)
+```
+
+---
+
+## 1️⃣4️⃣ Build the Graph
+
+```python
+graph = StateGraph(State)
+
+graph.add_node("chat", chat_node)
+graph.add_node("tools", tool_node)
+
+graph.add_edge(START, "chat")
+
+graph.add_conditional_edges(
+    "chat",
+    tools_condition,
+    {
+        "tools": "tools",
+        END: END
+    }
+)
+
+# 🔁 IMPORTANT LOOP
+graph.add_edge("tools", "chat")
+
+chatbot = graph.compile()
+```
+
+---
+
+## 1️⃣5️⃣ Test the Workflow
+
+### Normal Chat
+
+```python
+chatbot.invoke({
+    "messages": [HumanMessage(content="Hello")]
+})
+```
+
+### Calculator Tool
+
+```python
+chatbot.invoke({
+    "messages": [HumanMessage(content="What is the product of 2 and 3?")]
+})
+```
+
+### Stock Tool (Multi-step Reasoning)
+
+```python
+chatbot.invoke({
+    "messages": [
+        HumanMessage(content="What is the stock price of Apple and cost of 50 shares?")
+    ]
+})
+```
+
+---
+
+## 1️⃣6️⃣ Why This Design Is Powerful
+
+* ✅ Clean, user-friendly output
+* ✅ Multi-step reasoning
+* ✅ Unlimited tools possible
+* ✅ True Agentic behavior
+
+---
+
+## 1️⃣7️⃣ Fix Streaming Issue (Frontend)
+
+### ❌ Problem
+
+Tool messages were also being streamed.
+
+### ✅ Solution: Stream only AI messages
+
+```python
+from langchain_core.messages import AIMessage
+
+if isinstance(message, AIMessage):
+    st.write_stream(message.content)
+```
+
+---
+
+## 1️⃣8️⃣ Optional UX Improvement
+
+* ✔ Show status container in Streamlit
+* ✔ Display which tool is being used
+* ✔ Improves user trust & transparency
+
+---
+
+## 1️⃣9️⃣ Final Result
+
+Your chatbot can now:
+
+* Chat normally 🧠
+* Perform calculations 🧮
+* Search internet 🌐
+* Fetch live stock prices 📈
+* Chain multiple tools automatically 🔁
+
+
 
 
 
