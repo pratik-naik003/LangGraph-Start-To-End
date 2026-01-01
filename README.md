@@ -5699,6 +5699,437 @@ def calculator(a: int, b: int, operation: str) -> int:
 
 📌 **Docstring is VERY IMPORTANT** – the LLM reads it to decide when to use this tool.
 
+
+# 📘 Agentic AI using LangGraph – MCP (Model Context Protocol)
+
+---
+
+## 1️⃣ Playlist Status & Recap
+
+This video resumes the **Agentic AI using LangGraph** playlist after a long pause.
+
+### What we have covered so far (18 videos)
+
+#### Foundations
+
+* What is Agentic AI
+* Difference between Generative AI vs Agentic AI
+* LangChain vs LangGraph
+
+#### LangGraph Core Concepts
+
+* Nodes
+* State
+* Edges
+* Execution flow
+
+#### Workflow Types
+
+* Sequential workflow
+* Parallel workflow
+* Conditional workflow
+* Iterative (looping) workflow
+
+#### Chatbot Project (Step-by-step)
+
+* Basic LangGraph chatbot
+* UI using Streamlit
+* Streaming responses
+* Resume chat (threads)
+* Database persistence (SQLite)
+* Observability using LangSmith
+* Tools (Calculator, Web Search, Stock Price)
+
+---
+
+## 2️⃣ Today’s Topic: MCP (Model Context Protocol)
+
+### Why this video exists
+
+The playlist was paused mainly because the creator was working deeply on **MCP**, which has become very popular in the last **6 months**.
+
+Now, **MCP is being integrated into the chatbot**.
+
+---
+
+## 3️⃣ What is MCP? (Very Simple Explanation)
+
+**MCP = Improved and standardized way to connect tools with LLM applications**
+
+You can think of MCP as:
+
+> A better, cleaner, future‑proof replacement for traditional *tool calling*
+
+### Short definition
+
+* MCP is **not a completely new idea**
+* It is a **standardized way** to connect tools
+* It clearly separates:
+
+  * Tool logic
+  * Client (chatbot) logic
+
+---
+
+## 4️⃣ Problem with Normal Tools (Important)
+
+### Current tool approach
+
+In LangChain / LangGraph, tools are:
+
+* Library‑based tools (e.g., DuckDuckGo search)
+* User‑defined tools (custom Python functions)
+
+### Example tools already used
+
+* Search tool
+* Calculator tool
+* Stock price tool
+
+---
+
+## 5️⃣ Example Problem: GitHub Integration
+
+Suppose:
+
+* Your chatbot already has **3 tools**
+* Manager asks you to add **GitHub integration**
+* Chatbot should answer questions about:
+
+  * Pull Requests
+  * Commits
+  * Files
+
+### What do you do today?
+
+You must:
+
+* Write custom GitHub tools
+* Handle:
+
+  * Authentication
+  * Headers
+  * API URLs
+  * JSON parsing
+
+### Example: GitHub Pull Request Tool (Conceptual)
+
+```python
+def get_pull_requests(owner, repo, state="open", limit=5):
+    headers = {
+        "Authorization": f"Bearer {GITHUB_TOKEN}"
+    }
+    url = f"https://api.github.com/repos/{owner}/{repo}/pulls"
+    response = requests.get(url, headers=headers)
+    return response.json()
+```
+
+---
+
+## 6️⃣ The BIG Problem: Brittleness
+
+### Why this approach is dangerous
+
+* GitHub updates API versions
+* URLs change
+* JSON fields change
+* Attribute names change
+
+### Example changes
+
+```
+/pulls  → /pull_requests
+title   → title_name
+user    → user_name
+```
+
+### 💥 Result
+
+* Chatbot crashes
+* All tools break
+* You must update code everywhere
+
+---
+
+## 7️⃣ Scaling Problem (N × M Explosion)
+
+If:
+
+* **N** tools
+* **M** chatbots
+
+Then:
+
+```
+Maintenance cost = N × M
+```
+
+If you integrate:
+
+* GitHub
+* Gmail
+* Slack
+* Jira
+
+👉 You spend more time **maintaining tools** than building features
+
+---
+
+## 8️⃣ How MCP Solves This
+
+### Core MCP Idea: Separation of Concerns
+
+| Client (Chatbot) | Server (Tools)      |
+| ---------------- | ------------------- |
+| Only config code | All tool logic      |
+| Stable           | Can change          |
+| No API logic     | Handles API changes |
+
+### Key Rule
+
+* Tool code stays on **MCP server**
+* Client code **NEVER changes**
+
+---
+
+## 9️⃣ MCP Architecture (Simple)
+
+### MCP Server
+
+* Owns tool logic
+* Handles APIs
+* Handles version changes
+
+### MCP Client
+
+* Just connects via config
+* Auto‑discovers tools
+
+---
+
+## 🔟 From Tool Code → MCP Config Code
+
+### Old way (lots of code)
+
+* Multiple Python functions
+* API handling
+* Error handling
+
+### MCP way (only config)
+
+```python
+client = MultiServerMCPClient(
+    servers={
+        "math": {
+            "transport": "stdio",
+            "command": ["python", "main.py"]
+        }
+    }
+)
+```
+
+✅ No tool logic on client side
+
+---
+
+## 1️⃣1️⃣ Why Async is Required
+
+### Important clarification
+
+* MCP libraries are **async‑only**
+* Therefore, your **LangGraph chatbot must be async**
+
+---
+
+## 1️⃣2️⃣ Converting LangGraph Chatbot to Async
+
+### Key changes
+
+#### 1. Make chat node async
+
+```python
+async def chat_node(state):
+    response = await llm.ainvoke(state["messages"])
+    return {"messages": [response]}
+```
+
+#### 2. Use `ainvoke` instead of `invoke`
+
+```python
+result = await chatbot.ainvoke(input_data)
+```
+
+#### 3. Async entry point
+
+```python
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+---
+
+## 1️⃣3️⃣ Why Async Matters (Intuition)
+
+### Sequential (slow)
+
+* Weather API → wait
+* Cricket score API → wait
+
+### Async (fast)
+
+* Weather API ⏳
+* Cricket score API ⏳
+* Both run together
+
+👉 Faster, concurrent execution
+
+---
+
+## 1️⃣4️⃣ Building MCP Client in LangGraph
+
+### Install library
+
+```bash
+pip install langchain-mcp-adapters
+```
+
+or
+
+```bash
+uv add langchain-mcp-adapters
+```
+
+---
+
+## 1️⃣5️⃣ Connecting to Local MCP Server (Math Server)
+
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+client = MultiServerMCPClient(
+    servers={
+        "math": {
+            "transport": "stdio",
+            "command": ["python", "main.py"]
+        }
+    }
+)
+```
+
+### Fetch tools from server
+
+```python
+tools = await client.get_tools()
+llm = llm.bind_tools(tools)
+```
+
+✔ Tools are auto‑discovered
+✔ No manual tool definition
+
+---
+
+## 1️⃣6️⃣ Adding a Remote MCP Server (Expense Tracker)
+
+```python
+client = MultiServerMCPClient(
+    servers={
+        "math": {...},
+        "expense": {
+            "transport": "streamable_http",
+            "url": "https://expense-mcp-server.com"
+        }
+    }
+)
+```
+
+---
+
+## 1️⃣7️⃣ What the Expense MCP Server Provides
+
+* add_expense
+* list_expenses
+* summarize_expenses
+
+💡 No expense logic written in chatbot
+💡 Everything comes from MCP server
+
+---
+
+## 1️⃣8️⃣ Example Usage (No Client Code Change)
+
+* Add an expense of ₹500 for Udemy course on 10th Nov
+* List my expenses for November
+* Summarize my expenses
+
+All handled automatically via MCP 🎯
+
+---
+
+## 1️⃣9️⃣ Mixing Tools + MCP (Allowed)
+
+You can:
+
+* Use normal tools (search, stock)
+* Use MCP servers (math, expense)
+
+👉 Mixing is allowed
+👉 MCP is recommended for future‑proofing
+
+---
+
+## 2️⃣0️⃣ Real Project Notes (Important)
+
+### Tech stack issues
+
+* MCP → async only
+* LangGraph → sync + async
+* Streamlit → mostly sync
+* SQLite → sync
+
+### Fixes used
+
+* Converted backend to async
+* Used `aiosqlite` instead of `sqlite`
+* Used async streaming (`astream`)
+
+⚠️ **Not production‑ready**
+
+### For production
+
+* FastAPI backend
+* React / Next.js frontend
+
+---
+
+## 2️⃣1️⃣ Why MCP Is the Future
+
+* Industry standard
+* Used by ChatGPT internally
+* Stable
+* Scalable
+* No client maintenance
+
+---
+
+## 2️⃣2️⃣ What’s Next?
+
+➡️ **Next video topic**
+
+* RAG (Retrieval Augmented Generation)
+* Ask questions on internal documents
+* PDFs
+* Knowledge bases
+
+---
+
+## ✅ Final Takeaway
+
+**Tools = brittle**
+**MCP = robust, scalable, future‑proof**
+
+If you are building **serious agentic AI systems**, MCP is the right choice.
+
+
 ---
 
 ### 🔹 Tool 3: Stock Price Tool (Custom API Tool)
