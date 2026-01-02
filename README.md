@@ -6294,6 +6294,382 @@ Your chatbot can now:
 * Fetch live stock prices 📈
 * Chain multiple tools automatically 🔁
 
+* # 📘 LangGraph Chatbot → RAG Chatbot (Simple English Notes)
+
+---
+
+## 1️⃣ Recap: What we have built so far
+
+In the **Agentic AI using LangGraph** playlist, we are building **one chatbot as a running project**.
+
+So far, we have added these features step by step:
+
+* ✅ Basic chatbot (LLM chat)
+* ✅ UI using Streamlit
+* ✅ Streaming responses (token by token)
+* ✅ Chat persistence (resume chat)
+* ✅ Observability using LangSmith
+* ✅ Tools (Calculator, Web Search, Stock Price)
+* ✅ MCP (Model Context Protocol)
+
+Each new feature helped us learn **one new LangGraph concept**.
+
+---
+
+## 2️⃣ Goal of this Video: Convert Chatbot into a RAG Chatbot
+
+### ❌ Before
+
+* Chatbot could only answer using LLM knowledge
+* Could NOT answer questions from your documents
+
+### ✅ After (RAG)
+
+* Upload a PDF / document
+* Ask questions based on that document
+* Tools still work (calculator, stock price, etc.)
+
+📌 **Result → Multi-Utility Chatbot**
+
+---
+
+## 3️⃣ What is RAG? (Quick Recap)
+
+**RAG = Retrieval Augmented Generation**
+
+**Meaning:**
+
+> Give extra context (documents) to the LLM while answering questions.
+
+---
+
+## 4️⃣ Why do we need RAG?
+
+### 🔹 Reason 1: Outdated Knowledge
+
+* LLMs have a knowledge cutoff
+* For latest info → external data is needed
+* ChatGPT itself uses RAG + Web Search
+
+### 🔹 Reason 2: Private Data
+
+LLMs do NOT know:
+
+* Your PDFs
+* Company documents
+* Personal files
+* Internal reports
+
+📌 **RAG allows:**
+
+> Connecting private documents with LLM safely
+
+### 🔹 Reason 3: Hallucination
+
+* LLMs sometimes give confident but wrong answers
+* Example: fake research paper links
+
+📌 **RAG helps by:**
+
+* Forcing LLM to answer only from given context
+* Reduces hallucination
+
+---
+
+## 5️⃣ Core Idea of RAG (Very Important)
+
+### 🔹 In-Context Learning
+
+LLM answers based on:
+
+* Your question
+* Extra context (retrieved documents)
+* Its own language ability
+
+### ❌ Wrong approach
+
+* Paste full book / full codebase → ❌ Token limit exceeded
+
+### ✅ Correct approach
+
+* Retrieve only relevant parts
+* Send filtered context to LLM
+
+---
+
+## 6️⃣ High-Level RAG Architecture
+
+### Step-by-step Flow
+
+```
+Document → Split → Embed → Store → Retrieve → Prompt → Answer
+```
+
+### Detailed Explanation
+
+1️⃣ Load document (PDF, text, web page)
+2️⃣ Split document into small chunks
+3️⃣ Generate embeddings for each chunk
+4️⃣ Store embeddings in a vector database
+5️⃣ User asks a question
+6️⃣ Question is embedded
+7️⃣ Retriever finds most similar chunks
+8️⃣ Retrieved chunks + question sent to LLM
+9️⃣ LLM generates final answer
+
+---
+
+## 7️⃣ Libraries Used
+
+* langchain
+* langgraph
+* langchain-openai
+* faiss-cpu
+* pypdf
+* streamlit
+
+---
+
+## 8️⃣ Step 1: Load PDF Document
+
+```python
+from langchain.document_loaders import PyPDFLoader
+
+loader = PyPDFLoader("intro_to_ml.pdf")
+documents = loader.load()
+```
+
+---
+
+## 9️⃣ Step 2: Split Document into Chunks
+
+```python
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=500,
+    chunk_overlap=50
+)
+
+chunks = text_splitter.split_documents(documents)
+```
+
+📌 **Chunking is important to:**
+
+* Maintain context
+* Avoid token overflow
+
+---
+
+## 🔟 Step 3: Generate Embeddings
+
+```python
+from langchain_openai import OpenAIEmbeddings
+
+embeddings = OpenAIEmbeddings(
+    model="text-embedding-3-small"
+)
+```
+
+---
+
+## 1️⃣1️⃣ Step 4: Store in Vector Database (FAISS)
+
+```python
+from langchain.vectorstores import FAISS
+
+vectorstore = FAISS.from_documents(
+    chunks,
+    embedding=embeddings
+)
+```
+
+---
+
+## 1️⃣2️⃣ Step 5: Create Retriever
+
+```python
+retriever = vectorstore.as_retriever(
+    search_type="similarity",
+    search_kwargs={"k": 4}
+)
+```
+
+📌 **Retriever returns top-4 most relevant chunks**
+
+---
+
+## 1️⃣3️⃣ Testing Retriever (Important Demo)
+
+```python
+docs = retriever.invoke("What is a decision tree?")
+len(docs)
+```
+
+**Output → 4**
+
+Each item contains:
+
+* page_content
+* metadata
+
+---
+
+## 1️⃣4️⃣ Wrap RAG as a Tool (Very Important)
+
+```python
+from langchain.tools import tool
+
+@tool
+def rag_tool(query: str):
+    """
+    Use this tool when the user asks questions
+    based on uploaded documents.
+    """
+    docs = retriever.invoke(query)
+
+    context = [doc.page_content for doc in docs]
+    metadata = [doc.metadata for doc in docs]
+
+    return {
+        "query": query,
+        "context": context,
+        "metadata": metadata
+    }
+```
+
+📌 **RAG is treated as just another tool**
+
+---
+
+## 1️⃣5️⃣ Bind Tools to LLM
+
+```python
+tools = [rag_tool, calculator_tool, stock_price_tool]
+
+llm = llm.bind_tools(tools)
+```
+
+---
+
+## 1️⃣6️⃣ LangGraph Nodes
+
+### 🔹 Chat Node
+
+* Decides whether a tool is needed
+
+### 🔹 Tool Node
+
+* Executes RAG tool
+
+```python
+from langgraph.graph import StateGraph
+
+graph = StateGraph(ChatState)
+
+graph.add_node("chat", chat_node)
+graph.add_node("tools", tool_node)
+
+graph.add_edge("chat", "tools")
+graph.add_edge("tools", "chat")
+
+graph.set_entry_point("chat")
+
+app = graph.compile()
+```
+
+---
+
+## 1️⃣7️⃣ Full Chat Flow
+
+```
+User Question
+   ↓
+Chat Node (decision)
+   ↓
+RAG Tool (retrieve docs)
+   ↓
+Chat Node (final answer)
+   ↓
+End
+```
+
+---
+
+## 1️⃣8️⃣ Example Query
+
+```python
+app.invoke({
+    "messages": [
+        ("human", "Using the PDF, explain how to split a node in a decision tree")
+    ]
+})
+```
+
+⏱️ Takes **~8–9 seconds**
+(because retrieval + LLM processing)
+
+---
+
+## 1️⃣9️⃣ Observability with LangSmith
+
+LangSmith shows:
+
+* Chat node execution
+* Tool invocation
+* Retrieved chunks
+* Final response
+
+📌 **Visual Flow:**
+
+```
+Chat → Tool → Chat
+```
+
+---
+
+## 2️⃣0️⃣ Integrating RAG into Existing Project
+
+### 🆕 New Files Added
+
+* `langgraph_rag_backend.py`
+* `streamlit_rag_frontend.py`
+
+### 🔹 Backend Changes
+
+* Created `ingest_pdf()` function
+* Added RAG tool with other tools
+
+### 🔹 Frontend Changes
+
+* PDF upload option in sidebar
+* Minor thread handling updates
+
+---
+
+## 2️⃣1️⃣ Key Takeaway
+
+* ✅ RAG in LangGraph is very simple
+* ✅ Treat RAG as a tool
+* ✅ Same agent architecture
+* ✅ Production-ready design
+
+---
+
+## 2️⃣2️⃣ What’s Next?
+
+* More LangGraph concepts
+* Advanced agents
+* Agent orchestration
+* Real-world Agentic AI systems
+
+---
+
+## 🎯 Final Summary (One Line)
+
+> **If you know tools in LangGraph, RAG is just another tool.**
+
+
 
 
 
